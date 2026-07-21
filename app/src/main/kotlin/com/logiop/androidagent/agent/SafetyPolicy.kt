@@ -20,10 +20,15 @@ object SafetyPolicy {
         "conferma ordine", "checkout", "trasferisci", "bonifico",
     )
 
+    // Whole-word matching so e.g. "posta" does not fire inside "impostazioni".
+    private val patterns = IRREVERSIBLE_KEYWORDS.map { keyword ->
+        Regex("""\b${Regex.escape(keyword)}\b""", RegexOption.IGNORE_CASE)
+    }
+
     fun isIrreversible(action: AgentAction): Boolean {
         // Only a commit tap is treated as irreversible; typing/scrolling are not.
         if (action.action != "tap") return false
-        val haystack = "${action.target} ${action.text}".lowercase()
-        return IRREVERSIBLE_KEYWORDS.any { haystack.contains(it) }
+        val haystack = "${action.target} ${action.text}"
+        return patterns.any { it.containsMatchIn(haystack) }
     }
 }
