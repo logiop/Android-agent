@@ -9,6 +9,20 @@ The overall project vision and Phase 1 plan (always-on AI overlay, Italian
 voice control, on-device LLM, and an AccessibilityService to drive apps) live
 in [`PROJECT_PLAN.md`](PROJECT_PLAN.md).
 
+## Current build (Phase 1 · Step 1)
+
+Implemented so far: a draggable floating **overlay bubble**, gated behind
+**biometric unlock**.
+
+To test on the device:
+
+1. Open the app and tap **Concedi permesso overlay**, then enable "Display over
+   other apps" for Android Agent and go back.
+2. Tap **Attiva agente** and confirm with fingerprint / face / device PIN.
+3. A bubble appears on top of every app — drag it around; tapping it shows a
+   placeholder message (voice control comes in the next step).
+4. Stop it from the **Disattiva** notification action or the in-app button.
+
 ## Downloading the APK
 
 Development happens phone-first, so every push is built by CI. The `android`

@@ -1,4 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Android Agent</string>
+
+    <!-- Home screen -->
+    <string name="status_needs_overlay">Concedi il permesso overlay per iniziare.</string>
+    <string name="status_ready">Pronto. Attiva l\'agente con lo sblocco biometrico.</string>
+    <string name="status_active">Agente attivo: la bolla è visibile sullo schermo.</string>
+    <string name="grant_overlay">Concedi permesso overlay</string>
+    <string name="activate_agent">Attiva agente</string>
+    <string name="deactivate_agent">Disattiva agente</string>
+
+    <!-- Biometric -->
+    <string name="biometric_title">Sblocca Android Agent</string>
+    <string name="biometric_subtitle">Conferma la tua identità per attivare l\'overlay.</string>
+    <string name="biometric_unavailable">Nessun metodo di sblocco biometrico disponibile su questo dispositivo.</string>
+    <string name="overlay_permission_required">Concedi prima il permesso overlay.</string>
+    <string name="auth_failed">Autenticazione non riuscita: %1$s</string>
+    <string name="cancel">Annulla</string>
+
+    <!-- Overlay bubble -->
+    <string name="bubble_content_description">Bolla Android Agent</string>
+    <string name="bubble_tapped">Agente attivo. Il comando vocale arriverà nel prossimo step.</string>
+
+    <!-- Foreground service notification -->
+    <string name="notification_channel_name">Overlay Android Agent</string>
+    <string name="notification_title">Android Agent attivo</string>
+    <string name="notification_text">La bolla flottante è in esecuzione.</string>
+    <string name="notification_stop">Disattiva</string>
 </resources>
