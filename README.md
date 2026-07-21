@@ -3,6 +3,20 @@
 A Kotlin Android application scaffold built with Jetpack Compose, the Gradle
 Kotlin DSL, and a Gradle version catalog.
 
+## Roadmap
+
+The overall project vision and Phase 1 plan (always-on AI overlay, Italian
+voice control, on-device LLM, and an AccessibilityService to drive apps) live
+in [`PROJECT_PLAN.md`](PROJECT_PLAN.md).
+
+## Downloading the APK
+
+Development happens phone-first, so every push is built by CI. The `android`
+GitHub Actions workflow compiles a debug APK and attaches it to the
+`debug-latest` pre-release. Open the repository's **Releases** page and download
+`app-debug.apk` directly onto the device (no unzip needed), then install it with
+"unknown sources" enabled.
+
 ## Requirements
 
 - JDK 17
