@@ -8,6 +8,8 @@ import com.logiop.androidagent.brain.AgentAction
 import com.logiop.androidagent.brain.Brain
 import com.logiop.androidagent.hands.AgentAccessibilityService
 import com.logiop.androidagent.hands.AppLauncher
+import com.logiop.androidagent.memory.Trajectory
+import com.logiop.androidagent.memory.TrajectoryStep
 import com.logiop.androidagent.security.AuditLog
 
 /**
@@ -32,6 +34,9 @@ class AgentLoop(
         fun onInfo(message: String)
         fun onFinished(message: String)
         fun requestConfirmation(description: String, onResult: (Boolean) -> Unit)
+
+        /** A successful run worth turning into a skill (pending human review). */
+        fun onLearnable(command: String, trajectory: Trajectory)
     }
 
     private val main = Handler(Looper.getMainLooper())
@@ -42,6 +47,12 @@ class AgentLoop(
     private var lastSignature: String? = null
     private var running = false
 
+    // Trajectory recorded during the current run, for skill compilation.
+    private val trajectorySteps = mutableListOf<TrajectoryStep>()
+    private var controlSteps = 0
+    private var startFingerprint = ""
+    private var targetApp = ""
+
     val isRunning: Boolean get() = running
 
     fun start(command: String) {
@@ -51,6 +62,10 @@ class AgentLoop(
         noProgress = 0
         lastSignature = null
         running = true
+        trajectorySteps.clear()
+        controlSteps = 0
+        startFingerprint = ""
+        targetApp = ""
         auditLog.record("COMMAND \"$command\"")
         runStep()
     }
@@ -72,6 +87,9 @@ class AgentLoop(
             return
         }
 
+        if (startFingerprint.isEmpty()) {
+            startFingerprint = service.captureDescriptor().fingerprint()
+        }
         val snapshot = service.captureScreen()
         val currentPackage = service.currentPackage()
         step++
@@ -93,6 +111,12 @@ class AgentLoop(
 
         when (action.action) {
             "done" -> {
+                val endFingerprint = AgentAccessibilityService.instance
+                    ?.captureDescriptor()?.fingerprint().orEmpty()
+                if (StateVerifier.isLearnable(startFingerprint, endFingerprint, controlSteps)) {
+                    auditLog.record("LEARNABLE steps=$controlSteps")
+                    host.onLearnable(command, Trajectory(command, targetApp, trajectorySteps.toList()))
+                }
                 finish(context.getString(R.string.agent_done))
                 return
             }
@@ -142,13 +166,26 @@ class AgentLoop(
 
     private fun performControl(action: AgentAction) {
         val service = AgentAccessibilityService.instance ?: return
-        val ok = when (action.action) {
+        val argument = if (action.action == "type") action.text.ifBlank { action.target } else action.target
+        val locator = when (action.action) {
             "tap" -> service.clickByText(action.target)
             "type" -> service.typeText(action.text.ifBlank { action.target })
             "scroll" -> service.scroll(forward = action.target != "up" && action.target != "backward")
-            else -> false
+            else -> null
         }
-        auditLog.record("${action.action} \"${action.text.ifBlank { action.target }}\" ok=$ok")
+        val ok = locator != null
+        if (ok) {
+            controlSteps++
+            if (targetApp.isEmpty()) targetApp = service.currentPackage().orEmpty()
+            trajectorySteps += TrajectoryStep(
+                actionType = action.action,
+                argument = argument,
+                locator = locator!!,
+                stateFingerprint = service.captureDescriptor().fingerprint(),
+                irreversible = SafetyPolicy.isIrreversible(action),
+            )
+        }
+        auditLog.record("${action.action} \"$argument\" ok=$ok")
         host.onInfo(describe(action) + if (ok) "" else " " + context.getString(R.string.agent_action_failed))
     }
 
