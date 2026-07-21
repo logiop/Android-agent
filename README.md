@@ -9,6 +9,12 @@ The overall project vision and Phase 1 plan (always-on AI overlay, Italian
 voice control, on-device LLM, and an AccessibilityService to drive apps) live
 in [`PROJECT_PLAN.md`](PROJECT_PLAN.md).
 
+## Developer guide
+
+For the phone-first development workflow — getting the APK from CI, providing
+the LLM model, setup, using every feature, per-phase verification checklists,
+and troubleshooting — see [`docs/DEVELOPER_GUIDE.md`](docs/DEVELOPER_GUIDE.md).
+
 ## Current build (Phase 1 · Step 5)
 
 Implemented so far: a draggable **overlay bubble** gated behind **biometric
