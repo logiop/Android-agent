@@ -1,4 +1,94 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Android Agent</string>
+
+    <!-- Home screen -->
+    <string name="status_needs_overlay">Concedi il permesso overlay per iniziare.</string>
+    <string name="status_ready">Pronto. Attiva l\'agente con lo sblocco biometrico.</string>
+    <string name="status_active">Agente attivo: tocca la bolla e parla.</string>
+    <string name="grant_overlay">Concedi permesso overlay</string>
+    <string name="grant_mic">Concedi microfono</string>
+    <string name="activate_agent">Attiva agente</string>
+    <string name="deactivate_agent">Disattiva agente</string>
+    <string name="mic_status_ready">Microfono: concesso.</string>
+    <string name="mic_status_denied">Microfono negato: il comando vocale non funzionerà finché non lo concedi.</string>
+    <string name="accessibility_status_ready">Accessibilità: attiva.</string>
+    <string name="accessibility_status_off">Accessibilità disattivata: l\'agente non può leggere o comandare le app.</string>
+    <string name="grant_accessibility">Abilita accessibilità</string>
+    <string name="model_status_ready">Modello LLM: pronto.</string>
+    <string name="model_status_missing">Modello LLM assente: importa un file .task per attivare il cervello.</string>
+    <string name="import_model">Importa modello LLM</string>
+    <string name="model_importing">Importazione del modello in corso…</string>
+    <string name="model_imported">Modello importato.</string>
+    <string name="model_import_failed">Importazione del modello non riuscita.</string>
+    <string name="manage_whitelist">Gestisci whitelist app</string>
+    <string name="show_log">Mostra log azioni</string>
+
+    <!-- Whitelist screen -->
+    <string name="whitelist_title">Whitelist app</string>
+    <string name="whitelist_hint">L\'agente può toccare, scrivere e scorrere solo nelle app attivate qui. Tutte le altre sono bloccate.</string>
+
+    <!-- Encrypted action log screen -->
+    <string name="log_title">Log azioni (cifrato)</string>
+    <string name="log_loading">Caricamento…</string>
+    <string name="log_empty">Nessuna azione registrata.</string>
+
+    <!-- Biometric -->
+    <string name="biometric_title">Sblocca Android Agent</string>
+    <string name="biometric_subtitle">Conferma la tua identità per attivare l\'overlay.</string>
+    <string name="biometric_unavailable">Nessun metodo di sblocco biometrico disponibile su questo dispositivo.</string>
+    <string name="overlay_permission_required">Concedi prima il permesso overlay.</string>
+    <string name="auth_failed">Autenticazione non riuscita: %1$s</string>
+    <string name="cancel">Annulla</string>
+
+    <!-- Overlay bubble -->
+    <string name="bubble_content_description">Bolla Android Agent</string>
+    <string name="mic_permission_needed">Permesso microfono negato. Concedilo per usare la voce.</string>
+    <string name="accessibility_needed">Abilita il servizio di accessibilità per comandare le app.</string>
+    <string name="model_missing">Modello LLM assente. Importalo dall\'app.</string>
+
+    <!-- Command execution -->
+    <string name="cmd_opening">Apro %1$s…</string>
+    <string name="cmd_app_not_found">App non trovata: %1$s</string>
+    <string name="cmd_searching">Cerco su Google: %1$s</string>
+    <string name="action_planned">Pianificato: %1$s → %2$s</string>
+
+    <!-- Brain (LLM) -->
+    <string name="brain_thinking">Sto pensando…</string>
+    <string name="brain_failed">Errore del modello.</string>
+    <string name="brain_bad_output">Il modello non ha restituito un\'azione valida.</string>
+
+    <!-- Agent loop -->
+    <string name="agent_done">Fatto.</string>
+    <string name="agent_max_steps">Raggiunto il numero massimo di passi, mi fermo.</string>
+    <string name="agent_no_progress">Nessun progresso dopo alcuni tentativi, mi fermo.</string>
+    <string name="agent_cancelled">Azione annullata.</string>
+    <string name="agent_blocked_app">App non in whitelist (%1$s): azione bloccata.</string>
+    <string name="agent_action_failed">(non riuscito)</string>
+
+    <!-- Irreversible action confirmation -->
+    <string name="confirm_title">Azione irreversibile</string>
+    <string name="confirm_message">Vuoi davvero eseguire questa azione?\n\n%1$s</string>
+    <string name="confirm_ok">Conferma</string>
+
+    <!-- Accessibility service -->
+    <string name="accessibility_label">Android Agent</string>
+    <string name="accessibility_description">Permette all\'agente di leggere lo schermo ed eseguire tap, digitazione e scorrimento nelle app che autorizzi.</string>
+
+    <!-- Voice recognition errors -->
+    <string name="voice_unavailable">Riconoscimento vocale non disponibile su questo dispositivo.</string>
+    <string name="voice_no_speech">Non ho sentito nulla, riprova.</string>
+    <string name="voice_err_audio">Errore audio del microfono.</string>
+    <string name="voice_err_network">Problema di rete durante il riconoscimento.</string>
+    <string name="voice_err_no_match">Non ho capito, riprova.</string>
+    <string name="voice_err_timeout">Nessun parlato rilevato.</string>
+    <string name="voice_err_permission">Permesso microfono mancante.</string>
+    <string name="voice_err_busy">Riconoscimento occupato, riprova.</string>
+    <string name="voice_err_generic">Errore durante il riconoscimento vocale.</string>
+
+    <!-- Foreground service notification -->
+    <string name="notification_channel_name">Overlay Android Agent</string>
+    <string name="notification_title">Android Agent attivo</string>
+    <string name="notification_text">La bolla flottante è in esecuzione.</string>
+    <string name="notification_stop">Disattiva</string>
 </resources>
