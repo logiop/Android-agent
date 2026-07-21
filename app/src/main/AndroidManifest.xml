@@ -45,6 +45,16 @@
             android:exported="false"
             android:label="@string/log_title" />
 
+        <activity
+            android:name=".SkillsActivity"
+            android:exported="false"
+            android:label="@string/skills_title" />
+
+        <activity
+            android:name=".SkillReviewActivity"
+            android:exported="false"
+            android:label="@string/skill_review_title" />
+
         <service
             android:name=".overlay.OverlayService"
             android:exported="false"

@@ -34,8 +34,11 @@ import com.logiop.androidagent.agent.Whitelist
 import com.logiop.androidagent.brain.Brain
 import com.logiop.androidagent.hands.AgentAccessibilityService
 import com.logiop.androidagent.hands.AppLauncher
+import com.logiop.androidagent.SkillReviewActivity
 import com.logiop.androidagent.hands.Command
 import com.logiop.androidagent.hands.CommandInterpreter
+import com.logiop.androidagent.memory.SkillStore
+import com.logiop.androidagent.memory.Trajectory
 import com.logiop.androidagent.security.AuditLog
 import com.logiop.androidagent.voice.VoiceRecognizer
 import kotlin.math.abs
@@ -83,6 +86,7 @@ class OverlayService : Service() {
     private lateinit var voice: VoiceRecognizer
     private lateinit var brain: Brain
     private lateinit var auditLog: AuditLog
+    private lateinit var skillStore: SkillStore
     private lateinit var agentLoop: AgentLoop
     private val mainHandler = Handler(Looper.getMainLooper())
 
@@ -93,6 +97,7 @@ class OverlayService : Service() {
         voice = VoiceRecognizer(this)
         brain = Brain(this)
         auditLog = AuditLog(this)
+        skillStore = SkillStore(this)
         agentLoop = AgentLoop(this, brain, Whitelist(this), auditLog, agentHost)
     }
 
@@ -289,6 +294,16 @@ class OverlayService : Service() {
 
         override fun requestConfirmation(description: String, onResult: (Boolean) -> Unit) {
             showConfirmation(description, onResult)
+        }
+
+        override fun onLearnable(command: String, trajectory: Trajectory) {
+            val pendingId = skillStore.savePending(trajectory)
+            startActivity(
+                Intent(this@OverlayService, SkillReviewActivity::class.java).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    putExtra(SkillReviewActivity.EXTRA_PENDING_ID, pendingId)
+                },
+            )
         }
     }
 

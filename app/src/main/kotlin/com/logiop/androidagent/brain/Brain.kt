@@ -55,12 +55,11 @@ class Brain(private val context: Context) {
 
     private fun ensureEngine(): LlmInference {
         engine?.let { return it }
+        // Sampling params (topK/temperature) moved to LlmInferenceSession in newer
+        // runtimes; keep only the stable options and rely on defaults for now.
         val options = LlmInferenceOptions.builder()
             .setModelPath(ModelRepository.modelFile(context).absolutePath)
             .setMaxTokens(512)
-            .setTopK(40)
-            .setTemperature(0.2f)
-            .setRandomSeed(0)
             .build()
         return LlmInference.createFromOptions(context, options).also { engine = it }
     }

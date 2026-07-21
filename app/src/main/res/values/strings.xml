@@ -23,6 +23,7 @@
     <string name="model_import_failed">Importazione del modello non riuscita.</string>
     <string name="manage_whitelist">Gestisci whitelist app</string>
     <string name="show_log">Mostra log azioni</string>
+    <string name="show_skills">Skill apprese</string>
 
     <!-- Whitelist screen -->
     <string name="whitelist_title">Whitelist app</string>
@@ -32,6 +33,18 @@
     <string name="log_title">Log azioni (cifrato)</string>
     <string name="log_loading">Caricamento…</string>
     <string name="log_empty">Nessuna azione registrata.</string>
+
+    <!-- Skill review / library -->
+    <string name="skill_review_title">Salva come skill?</string>
+    <string name="skill_review_hint">Ho imparato questa procedura. Controlla il pattern: metti tra {graffe} le parti variabili (es. \"cerca {query}\").</string>
+    <string name="skill_intent_pattern">Pattern del comando</string>
+    <string name="skill_target_app">App: %1$s</string>
+    <string name="skill_steps_header">Passi registrati</string>
+    <string name="skill_save">Salva skill</string>
+    <string name="skill_discard">Annulla</string>
+    <string name="skills_title">Skill apprese</string>
+    <string name="skills_empty">Nessuna skill appresa finora.</string>
+    <string name="skill_delete">Elimina</string>
 
     <!-- Biometric -->
     <string name="biometric_title">Sblocca Android Agent</string>

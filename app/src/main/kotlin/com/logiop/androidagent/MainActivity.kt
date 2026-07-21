@@ -98,6 +98,7 @@ class MainActivity : FragmentActivity() {
                         onImportModel = ::launchModelPicker,
                         onManageWhitelist = ::openWhitelist,
                         onShowLog = ::openLog,
+                        onShowSkills = ::openSkills,
                         onActivate = ::authenticateAndStart,
                         onDeactivate = ::stopOverlay,
                     )
@@ -161,6 +162,10 @@ class MainActivity : FragmentActivity() {
 
     private fun openLog() {
         startActivity(Intent(this, LogActivity::class.java))
+    }
+
+    private fun openSkills() {
+        startActivity(Intent(this, SkillsActivity::class.java))
     }
 
     private fun importModel(uri: Uri) {
@@ -260,6 +265,7 @@ fun AgentScreen(
     onImportModel: () -> Unit,
     onManageWhitelist: () -> Unit,
     onShowLog: () -> Unit,
+    onShowSkills: () -> Unit,
     onActivate: () -> Unit,
     onDeactivate: () -> Unit,
     modifier: Modifier = Modifier,
@@ -358,6 +364,13 @@ fun AgentScreen(
             Text(stringResource(R.string.show_log))
         }
 
+        OutlinedButton(
+            onClick = onShowSkills,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(stringResource(R.string.show_skills))
+        }
+
         Button(
             onClick = onActivate,
             enabled = overlayGranted && !agentRunning,
@@ -392,6 +405,7 @@ fun AgentScreenPreview() {
             onImportModel = {},
             onManageWhitelist = {},
             onShowLog = {},
+            onShowSkills = {},
             onActivate = {},
             onDeactivate = {},
         )

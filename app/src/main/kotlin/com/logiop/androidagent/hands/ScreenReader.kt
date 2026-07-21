@@ -2,6 +2,7 @@ package com.logiop.androidagent.hands
 
 import android.graphics.Rect
 import android.view.accessibility.AccessibilityNodeInfo
+import com.logiop.androidagent.memory.UiStateDescriptor
 
 /**
  * Extracts a compact list of interactive elements from an accessibility node
@@ -48,6 +49,25 @@ object ScreenReader {
             editable = isEditable,
             scrollable = isScrollable,
             bounds = bounds,
+            resourceId = viewIdResourceName.orEmpty(),
+            contentDesc = contentDescription?.toString().orEmpty(),
+            className = className?.toString().orEmpty(),
+        )
+    }
+
+    /**
+     * A fingerprint of the current screen: the foreground package plus the
+     * resource ids / text of visible interactive elements. Used to detect
+     * whether an action actually changed the state.
+     */
+    fun descriptorOf(root: AccessibilityNodeInfo): UiStateDescriptor {
+        val snapshot = capture(root)
+        val keys = snapshot.elements.map { element ->
+            element.resourceId.ifBlank { element.text }
+        }.filter { it.isNotBlank() }
+        return UiStateDescriptor(
+            packageName = root.packageName?.toString().orEmpty(),
+            keys = keys,
         )
     }
 

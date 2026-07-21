@@ -11,6 +11,9 @@ data class UiElement(
     val editable: Boolean,
     val scrollable: Boolean,
     val bounds: Rect,
+    val resourceId: String = "",
+    val contentDesc: String = "",
+    val className: String = "",
 )
 
 /**

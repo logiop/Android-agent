@@ -8,6 +8,8 @@ import android.os.Bundle
 import android.provider.Settings
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import com.logiop.androidagent.memory.ElementLocator
+import com.logiop.androidagent.memory.UiStateDescriptor
 
 /**
  * The agent's "hands": reads the current screen and performs actions
@@ -47,42 +49,80 @@ class AgentAccessibilityService : AccessibilityService() {
         return ScreenReader.capture(root)
     }
 
+    /** Fingerprint of the current screen state (package + key element ids/text). */
+    fun captureDescriptor(): UiStateDescriptor {
+        val root = rootInActiveWindow ?: return UiStateDescriptor("", emptyList())
+        return ScreenReader.descriptorOf(root)
+    }
+
     /** Package name of the app currently in the foreground, if known. */
     fun currentPackage(): String? = rootInActiveWindow?.packageName?.toString()
 
-    /** Clicks the first clickable node whose text/description matches [query]. */
-    fun clickByText(query: String): Boolean {
-        val root = rootInActiveWindow ?: return false
+    /**
+     * Clicks the first clickable node whose text/description matches [query].
+     * Returns the locator of the matched element, or null if nothing was clicked.
+     */
+    fun clickByText(query: String): ElementLocator? {
+        val root = rootInActiveWindow ?: return null
         for (node in root.findAccessibilityNodeInfosByText(query)) {
-            clickableAncestor(node)?.let {
-                return it.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+            val target = clickableAncestor(node) ?: continue
+            if (target.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+                return locatorOf(node)
             }
         }
-        return false
+        return null
     }
 
-    /** Types [text] into the focused (or first) editable field. */
-    fun typeText(text: String): Boolean {
-        val root = rootInActiveWindow ?: return false
+    /**
+     * Types [text] into the focused (or first) editable field. Returns the
+     * locator of the field, or null if none was found.
+     */
+    fun typeText(text: String): ElementLocator? {
+        val root = rootInActiveWindow ?: return null
         val field = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
             ?: firstMatching(root) { it.isEditable }
-            ?: return false
+            ?: return null
         val args = Bundle().apply {
             putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text)
         }
-        return field.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
+        return if (field.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)) {
+            locatorOf(field)
+        } else {
+            null
+        }
     }
 
-    /** Scrolls the first scrollable container forward or backward. */
-    fun scroll(forward: Boolean): Boolean {
-        val root = rootInActiveWindow ?: return false
-        val scrollable = firstMatching(root) { it.isScrollable } ?: return false
+    /**
+     * Scrolls the first scrollable container. Returns the locator of the
+     * scrolled container, or null if none was found/scrolled.
+     */
+    fun scroll(forward: Boolean): ElementLocator? {
+        val root = rootInActiveWindow ?: return null
+        val scrollable = firstMatching(root) { it.isScrollable } ?: return null
         val action = if (forward) {
             AccessibilityNodeInfo.ACTION_SCROLL_FORWARD
         } else {
             AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD
         }
-        return scrollable.performAction(action)
+        return if (scrollable.performAction(action)) locatorOf(scrollable) else null
+    }
+
+    private fun locatorOf(node: AccessibilityNodeInfo): ElementLocator {
+        val parent = node.parent
+        val siblingText = parent?.let { p ->
+            (0 until p.childCount)
+                .mapNotNull { p.getChild(it) }
+                .firstOrNull { it != node && !it.text.isNullOrBlank() }
+                ?.text?.toString()
+        }
+        return ElementLocator(
+            resourceId = node.viewIdResourceName.orEmpty(),
+            text = node.text?.toString().orEmpty(),
+            contentDesc = node.contentDescription?.toString().orEmpty(),
+            className = node.className?.toString().orEmpty(),
+            parentText = parent?.text?.toString().orEmpty(),
+            siblingText = siblingText.orEmpty(),
+        )
     }
 
     private fun clickableAncestor(start: AccessibilityNodeInfo?): AccessibilityNodeInfo? {
