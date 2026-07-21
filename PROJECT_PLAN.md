@@ -18,10 +18,14 @@ modello LLM solo locale, nessuna chiamata a API a pagamento.
 1. **overlay** — bolla flottante trascinabile (SYSTEM_ALERT_WINDOW), sempre
    visibile, attivabile/disattivabile.
 2. **voice** — SpeechRecognizer on-device, lingua italiana.
-3. **brain** — inferenza LLM locale via llama.cpp o MediaPipe LLM Inference.
-   Modello di default: Qwen3.5 4B Instruct, quantizzato Q4, formato GGUF.
-   Alternativa selezionabile: Gemma. Il modello si carica solo quando
-   l'overlay è attivo, si scarica dalla memoria quando inattivo.
+3. **brain** — inferenza LLM locale via MediaPipe LLM Inference (Google), il
+   motore on-device scelto per la Fase 1. MediaPipe non usa il formato GGUF,
+   quindi il Qwen GGUF del piano originale non è compatibile con questo motore:
+   il modello di default è **Gemma 3 (1B/2B) Instruct in formato `.task`,
+   quantizzato int4**, buon compromesso latenza/RAM sul Galaxy S26 Ultra. Il
+   modello si carica solo quando l'overlay è attivo e si libera dalla memoria
+   quando inattivo. Il file `.task` non è incluso nell'APK: si importa sul
+   device (Storage Access Framework) e resta in storage privato dell'app.
 4. **hands** — AccessibilityService: estrae l'albero UI corrente in XML
    compatto (solo elementi interattivi, testo troncato, max ~30 nodi ) ed
    esegue le azioni (tap, type, scroll, open_app).

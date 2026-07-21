@@ -47,6 +47,9 @@ class AgentAccessibilityService : AccessibilityService() {
         return ScreenReader.capture(root)
     }
 
+    /** Package name of the app currently in the foreground, if known. */
+    fun currentPackage(): String? = rootInActiveWindow?.packageName?.toString()
+
     /** Clicks the first clickable node whose text/description matches [query]. */
     fun clickByText(query: String): Boolean {
         val root = rootInActiveWindow ?: return false

@@ -22,12 +22,15 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
+import android.widget.Button
+import android.widget.TextView
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.logiop.androidagent.MainActivity
 import com.logiop.androidagent.R
-import com.logiop.androidagent.brain.AgentAction
+import com.logiop.androidagent.agent.AgentLoop
+import com.logiop.androidagent.agent.Whitelist
 import com.logiop.androidagent.brain.Brain
 import com.logiop.androidagent.hands.AgentAccessibilityService
 import com.logiop.androidagent.hands.AppLauncher
@@ -74,9 +77,11 @@ class OverlayService : Service() {
 
     private lateinit var windowManager: WindowManager
     private var bubbleView: View? = null
+    private var confirmView: View? = null
 
     private lateinit var voice: VoiceRecognizer
     private lateinit var brain: Brain
+    private lateinit var agentLoop: AgentLoop
     private val mainHandler = Handler(Looper.getMainLooper())
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -85,6 +90,7 @@ class OverlayService : Service() {
         super.onCreate()
         voice = VoiceRecognizer(this)
         brain = Brain(this)
+        agentLoop = AgentLoop(this, brain, Whitelist(this), agentHost)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -105,6 +111,8 @@ class OverlayService : Service() {
         super.onDestroy()
         isRunning = false
         mainHandler.removeCallbacksAndMessages(null)
+        agentLoop.stop()
+        dismissConfirmation()
         voice.destroy()
         brain.close()
         bubbleView?.let { view ->
@@ -241,10 +249,9 @@ class OverlayService : Service() {
     }
 
     /**
-     * A free-form command is planned by the LLM: capture the screen, ask the
-     * brain for the next action, then run the safe ones. Tap/type/scroll are
-     * only reported for now — executing them needs the safety layer (whitelist +
-     * confirmation) added in the next step.
+     * A free-form command is handed to the agent loop: it plans with the LLM,
+     * executes safe navigation directly, and runs control actions only inside
+     * whitelisted apps, asking for confirmation before irreversible ones.
      */
     private fun handleFreeform(text: String) {
         val service = AgentAccessibilityService.instance
@@ -258,49 +265,66 @@ class OverlayService : Service() {
             openAppForModel()
             return
         }
-
-        val snapshot = service.captureScreen()
-        Log.d(TAG, "Comando: \"$text\"\n${snapshot.compactText}")
-        setBubbleState(BubbleState.THINKING)
-        Toast.makeText(this, getString(R.string.brain_thinking), Toast.LENGTH_SHORT).show()
-
-        brain.plan(text, snapshot.compactText, object : Brain.Callback {
-            override fun onAction(action: AgentAction, raw: String) {
-                Log.d(TAG, "LLM: $raw")
-                setBubbleState(BubbleState.IDLE)
-                executePlanned(action)
-            }
-
-            override fun onError(message: String) {
-                signalError(message)
-            }
-        })
+        agentLoop.start(text)
     }
 
-    private fun executePlanned(action: AgentAction) {
-        when (action.action) {
-            "open_app" -> {
-                val opened = AppLauncher.openApp(this, action.target)
-                toastLong(
-                    if (opened) {
-                        getString(R.string.cmd_opening, action.target)
-                    } else {
-                        getString(R.string.cmd_app_not_found, action.target)
-                    },
-                )
-            }
-
-            "search" -> {
-                val query = action.text.ifBlank { action.target }
-                AppLauncher.googleSearch(this, query)
-                toastLong(getString(R.string.cmd_searching, query))
-            }
-
-            else -> {
-                // tap / type / scroll / done: execution arrives with the safety layer.
-                toastLong(getString(R.string.action_planned, action.action, action.target))
-            }
+    private val agentHost = object : AgentLoop.Host {
+        override fun onThinking() {
+            setBubbleState(BubbleState.THINKING)
         }
+
+        override fun onInfo(message: String) {
+            toastLong(message)
+        }
+
+        override fun onFinished(message: String) {
+            setBubbleState(BubbleState.IDLE)
+            toastLong(message)
+        }
+
+        override fun requestConfirmation(description: String, onResult: (Boolean) -> Unit) {
+            showConfirmation(description, onResult)
+        }
+    }
+
+    private fun showConfirmation(description: String, onResult: (Boolean) -> Unit) {
+        dismissConfirmation()
+        val view = LayoutInflater.from(this).inflate(R.layout.overlay_confirm, null)
+        view.findViewById<TextView>(R.id.confirm_message).text =
+            getString(R.string.confirm_message, description)
+
+        val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+        } else {
+            @Suppress("DEPRECATION") WindowManager.LayoutParams.TYPE_PHONE
+        }
+        val params = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            type,
+            WindowManager.LayoutParams.FLAG_DIM_BEHIND,
+            PixelFormat.TRANSLUCENT,
+        ).apply {
+            gravity = Gravity.CENTER
+            dimAmount = 0.6f
+        }
+
+        view.findViewById<Button>(R.id.confirm_ok).setOnClickListener {
+            dismissConfirmation()
+            onResult(true)
+        }
+        view.findViewById<Button>(R.id.confirm_cancel).setOnClickListener {
+            dismissConfirmation()
+            onResult(false)
+        }
+
+        windowManager.addView(view, params)
+        confirmView = view
+    }
+
+    private fun dismissConfirmation() {
+        confirmView?.let { view -> runCatching { windowManager.removeView(view) } }
+        confirmView = null
     }
 
     private fun openAccessibilitySettings() {

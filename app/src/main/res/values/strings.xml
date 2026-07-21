@@ -21,6 +21,11 @@
     <string name="model_importing">Importazione del modello in corso…</string>
     <string name="model_imported">Modello importato.</string>
     <string name="model_import_failed">Importazione del modello non riuscita.</string>
+    <string name="manage_whitelist">Gestisci whitelist app</string>
+
+    <!-- Whitelist screen -->
+    <string name="whitelist_title">Whitelist app</string>
+    <string name="whitelist_hint">L\'agente può toccare, scrivere e scorrere solo nelle app attivate qui. Tutte le altre sono bloccate.</string>
 
     <!-- Biometric -->
     <string name="biometric_title">Sblocca Android Agent</string>
@@ -46,6 +51,19 @@
     <string name="brain_thinking">Sto pensando…</string>
     <string name="brain_failed">Errore del modello.</string>
     <string name="brain_bad_output">Il modello non ha restituito un\'azione valida.</string>
+
+    <!-- Agent loop -->
+    <string name="agent_done">Fatto.</string>
+    <string name="agent_max_steps">Raggiunto il numero massimo di passi, mi fermo.</string>
+    <string name="agent_no_progress">Nessun progresso dopo alcuni tentativi, mi fermo.</string>
+    <string name="agent_cancelled">Azione annullata.</string>
+    <string name="agent_blocked_app">App non in whitelist (%1$s): azione bloccata.</string>
+    <string name="agent_action_failed">(non riuscito)</string>
+
+    <!-- Irreversible action confirmation -->
+    <string name="confirm_title">Azione irreversibile</string>
+    <string name="confirm_message">Vuoi davvero eseguire questa azione?\n\n%1$s</string>
+    <string name="confirm_ok">Conferma</string>
 
     <!-- Accessibility service -->
     <string name="accessibility_label">Android Agent</string>

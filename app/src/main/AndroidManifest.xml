@@ -35,6 +35,11 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".WhitelistActivity"
+            android:exported="false"
+            android:label="@string/whitelist_title" />
+
         <service
             android:name=".overlay.OverlayService"
             android:exported="false"

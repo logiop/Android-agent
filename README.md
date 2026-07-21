@@ -9,23 +9,29 @@ The overall project vision and Phase 1 plan (always-on AI overlay, Italian
 voice control, on-device LLM, and an AccessibilityService to drive apps) live
 in [`PROJECT_PLAN.md`](PROJECT_PLAN.md).
 
-## Current build (Phase 1 · Step 4)
+## Current build (Phase 1 · Step 5)
 
 Implemented so far: a draggable **overlay bubble** gated behind **biometric
 unlock**, **Italian on-device voice recognition**, the **"hands"**
-(`AccessibilityService` that reads the screen and acts), and the **"brain"** — a
-local LLM (MediaPipe LLM Inference) that turns a command plus the current screen
-into a `{action, target, text}` decision.
+(`AccessibilityService`), the **"brain"** (MediaPipe LLM Inference), and the
+**agent loop with its safety layer**.
 
 Command flow:
 
 - **"apri &lt;app&gt;"** / **"cerca &lt;query&gt; su google"** run
   deterministically without the model.
-- Any other command is planned by the LLM. Safe actions (`open_app`, `search`)
-  are executed; `tap` / `type` / `scroll` are only reported for now — executing
-  them needs the safety layer (whitelist + confirmation) coming in the next step.
-- The screen text is passed to the model as **untrusted data** with an explicit
-  instruction to ignore any commands embedded in it (prompt-injection defense).
+- Any other command drives the agent loop: plan with the LLM → act → re-read the
+  screen → repeat, up to 15 steps, stopping after 3 steps with no on-screen
+  change instead of insisting.
+- **Safety layer (non-negotiable):**
+  - Navigation (`open_app`, `search`) is always allowed.
+  - `tap` / `type` / `scroll` run **only inside apps you added to the
+    whitelist** (everything is blocked by default — manage it from **Gestisci
+    whitelist app**).
+  - Irreversible taps (send / post / delete / pay …) require an explicit
+    **confirmation dialog** before running.
+  - Screen text is passed to the model as **untrusted data** with an explicit
+    instruction to ignore any commands embedded in it (prompt-injection defense).
 
 ### Providing the model
 
@@ -36,15 +42,19 @@ is imported, free-form commands report that the model is missing.
 
 To test on the device:
 
-1. Grant **overlay** and **microphone**, tap **Abilita accessibilità**, and
-   **Importa modello LLM**.
+1. Grant **overlay** and **microphone**, tap **Abilita accessibilità**,
+   **Importa modello LLM**, and add the apps you want to control under **Gestisci
+   whitelist app**.
 2. Tap **Attiva agente** and confirm with fingerprint / face / device PIN.
 3. Tap the bubble and say **"apri Chrome"** or **"cerca meteo Genova su
-   Google"**; try a free-form command to see the LLM plan an action (bubble
+   Google"**; try a free-form command to see the agent loop plan and act (bubble
    turns blue while thinking).
-4. Missing permissions/model never fail silently: the bubble turns **red** with
+4. Ask for something that ends in an irreversible tap (e.g. sending) to see the
+   confirmation dialog; try a control action in a non-whitelisted app to see it
+   blocked.
+5. Missing permissions/model never fail silently: the bubble turns **red** with
    a message and routes you to the right screen.
-5. Stop it from the **Disattiva** notification action or the in-app button.
+6. Stop it from the **Disattiva** notification action or the in-app button.
 
 ## Downloading the APK
 

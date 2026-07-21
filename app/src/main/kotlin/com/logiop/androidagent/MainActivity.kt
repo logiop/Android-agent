@@ -96,6 +96,7 @@ class MainActivity : FragmentActivity() {
                         onGrantMic = ::requestMicPermission,
                         onGrantAccessibility = ::openAccessibilitySettings,
                         onImportModel = ::launchModelPicker,
+                        onManageWhitelist = ::openWhitelist,
                         onActivate = ::authenticateAndStart,
                         onDeactivate = ::stopOverlay,
                     )
@@ -151,6 +152,10 @@ class MainActivity : FragmentActivity() {
     private fun launchModelPicker() {
         // Accept any file type; MediaPipe .task bundles have no standard MIME.
         pickModel.launch(arrayOf("*/*"))
+    }
+
+    private fun openWhitelist() {
+        startActivity(Intent(this, WhitelistActivity::class.java))
     }
 
     private fun importModel(uri: Uri) {
@@ -248,6 +253,7 @@ fun AgentScreen(
     onGrantMic: () -> Unit,
     onGrantAccessibility: () -> Unit,
     onImportModel: () -> Unit,
+    onManageWhitelist: () -> Unit,
     onActivate: () -> Unit,
     onDeactivate: () -> Unit,
     modifier: Modifier = Modifier,
@@ -332,6 +338,13 @@ fun AgentScreen(
             Text(stringResource(R.string.import_model))
         }
 
+        OutlinedButton(
+            onClick = onManageWhitelist,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(stringResource(R.string.manage_whitelist))
+        }
+
         Button(
             onClick = onActivate,
             enabled = overlayGranted && !agentRunning,
@@ -364,6 +377,7 @@ fun AgentScreenPreview() {
             onGrantMic = {},
             onGrantAccessibility = {},
             onImportModel = {},
+            onManageWhitelist = {},
             onActivate = {},
             onDeactivate = {},
         )
