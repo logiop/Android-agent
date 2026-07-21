@@ -1,15 +1,20 @@
 package com.logiop.androidagent.overlay
 
+import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
+import android.content.res.ColorStateList
 import android.graphics.PixelFormat
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.MotionEvent
@@ -17,7 +22,10 @@ import android.view.View
 import android.view.WindowManager
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
+import com.logiop.androidagent.MainActivity
 import com.logiop.androidagent.R
+import com.logiop.androidagent.voice.VoiceRecognizer
 import kotlin.math.abs
 
 /**
@@ -42,12 +50,30 @@ class OverlayService : Service() {
 
         /** Movement (px) beyond which a gesture counts as a drag rather than a tap. */
         private const val TOUCH_SLOP = 12
+
+        /** How long (ms) the bubble stays red after signalling an error. */
+        private const val ERROR_RESET_DELAY_MS = 2500L
+    }
+
+    /** Visual states of the bubble, encoded as background tints. */
+    private enum class BubbleState(val color: Int) {
+        IDLE(0xFF6650A4.toInt()),
+        LISTENING(0xFF2E7D32.toInt()),
+        ERROR(0xFFC62828.toInt()),
     }
 
     private lateinit var windowManager: WindowManager
     private var bubbleView: View? = null
 
+    private lateinit var voice: VoiceRecognizer
+    private val mainHandler = Handler(Looper.getMainLooper())
+
     override fun onBind(intent: Intent?): IBinder? = null
+
+    override fun onCreate() {
+        super.onCreate()
+        voice = VoiceRecognizer(this)
+    }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) {
@@ -66,6 +92,8 @@ class OverlayService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         isRunning = false
+        mainHandler.removeCallbacksAndMessages(null)
+        voice.destroy()
         bubbleView?.let { view ->
             runCatching { windowManager.removeView(view) }
         }
@@ -136,12 +164,69 @@ class OverlayService : Service() {
             y = 240
         }
 
-        view.setOnTouchListener(DragTouchListener(params) {
-            Toast.makeText(this, getString(R.string.bubble_tapped), Toast.LENGTH_SHORT).show()
-        })
+        view.setOnTouchListener(DragTouchListener(params) { onBubbleTapped() })
 
         windowManager.addView(view, params)
         bubbleView = view
+    }
+
+    private fun onBubbleTapped() {
+        if (voice.isListening) {
+            voice.cancel()
+            setBubbleState(BubbleState.IDLE)
+            return
+        }
+
+        if (!hasMicPermission()) {
+            // Never stay silent: surface the missing permission and route the
+            // user to the app where it can be granted.
+            signalError(getString(R.string.mic_permission_needed))
+            openAppForMicPermission()
+            return
+        }
+
+        startVoiceCapture()
+    }
+
+    private fun startVoiceCapture() {
+        setBubbleState(BubbleState.LISTENING)
+        voice.start(object : VoiceRecognizer.Callbacks {
+            override fun onResult(text: String) {
+                setBubbleState(BubbleState.IDLE)
+                // Placeholder: the "brain" step will consume this command.
+                Toast.makeText(
+                    this@OverlayService,
+                    getString(R.string.voice_heard, text),
+                    Toast.LENGTH_LONG,
+                ).show()
+            }
+
+            override fun onError(message: String) {
+                signalError(message)
+            }
+        })
+    }
+
+    private fun signalError(message: String) {
+        setBubbleState(BubbleState.ERROR)
+        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+        mainHandler.postDelayed({ setBubbleState(BubbleState.IDLE) }, ERROR_RESET_DELAY_MS)
+    }
+
+    private fun setBubbleState(state: BubbleState) {
+        bubbleView?.backgroundTintList = ColorStateList.valueOf(state.color)
+    }
+
+    private fun hasMicPermission(): Boolean =
+        ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) ==
+            PackageManager.PERMISSION_GRANTED
+
+    private fun openAppForMicPermission() {
+        val intent = Intent(this, MainActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            putExtra(MainActivity.EXTRA_REQUEST_MIC, true)
+        }
+        startActivity(intent)
     }
 
     /** Moves the bubble while dragging and reports a tap when the finger barely moved. */

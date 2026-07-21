@@ -5,10 +5,13 @@
     <!-- Home screen -->
     <string name="status_needs_overlay">Concedi il permesso overlay per iniziare.</string>
     <string name="status_ready">Pronto. Attiva l\'agente con lo sblocco biometrico.</string>
-    <string name="status_active">Agente attivo: la bolla è visibile sullo schermo.</string>
+    <string name="status_active">Agente attivo: tocca la bolla e parla.</string>
     <string name="grant_overlay">Concedi permesso overlay</string>
+    <string name="grant_mic">Concedi microfono</string>
     <string name="activate_agent">Attiva agente</string>
     <string name="deactivate_agent">Disattiva agente</string>
+    <string name="mic_status_ready">Microfono: concesso.</string>
+    <string name="mic_status_denied">Microfono negato: il comando vocale non funzionerà finché non lo concedi.</string>
 
     <!-- Biometric -->
     <string name="biometric_title">Sblocca Android Agent</string>
@@ -20,7 +23,19 @@
 
     <!-- Overlay bubble -->
     <string name="bubble_content_description">Bolla Android Agent</string>
-    <string name="bubble_tapped">Agente attivo. Il comando vocale arriverà nel prossimo step.</string>
+    <string name="mic_permission_needed">Permesso microfono negato. Concedilo per usare la voce.</string>
+    <string name="voice_heard">Ho sentito: %1$s</string>
+
+    <!-- Voice recognition errors -->
+    <string name="voice_unavailable">Riconoscimento vocale non disponibile su questo dispositivo.</string>
+    <string name="voice_no_speech">Non ho sentito nulla, riprova.</string>
+    <string name="voice_err_audio">Errore audio del microfono.</string>
+    <string name="voice_err_network">Problema di rete durante il riconoscimento.</string>
+    <string name="voice_err_no_match">Non ho capito, riprova.</string>
+    <string name="voice_err_timeout">Nessun parlato rilevato.</string>
+    <string name="voice_err_permission">Permesso microfono mancante.</string>
+    <string name="voice_err_busy">Riconoscimento occupato, riprova.</string>
+    <string name="voice_err_generic">Errore durante il riconoscimento vocale.</string>
 
     <!-- Foreground service notification -->
     <string name="notification_channel_name">Overlay Android Agent</string>

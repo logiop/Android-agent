@@ -9,19 +9,26 @@ The overall project vision and Phase 1 plan (always-on AI overlay, Italian
 voice control, on-device LLM, and an AccessibilityService to drive apps) live
 in [`PROJECT_PLAN.md`](PROJECT_PLAN.md).
 
-## Current build (Phase 1 · Step 1)
+## Current build (Phase 1 · Step 2)
 
-Implemented so far: a draggable floating **overlay bubble**, gated behind
-**biometric unlock**.
+Implemented so far: a draggable floating **overlay bubble** gated behind
+**biometric unlock**, plus **Italian on-device voice recognition** triggered by
+tapping the bubble.
 
 To test on the device:
 
 1. Open the app and tap **Concedi permesso overlay**, then enable "Display over
    other apps" for Android Agent and go back.
-2. Tap **Attiva agente** and confirm with fingerprint / face / device PIN.
-3. A bubble appears on top of every app — drag it around; tapping it shows a
-   placeholder message (voice control comes in the next step).
-4. Stop it from the **Disattiva** notification action or the in-app button.
+2. Tap **Concedi microfono** and allow the `RECORD_AUDIO` permission (it is also
+   requested automatically the first time you activate the agent).
+3. Tap **Attiva agente** and confirm with fingerprint / face / device PIN.
+4. A bubble appears on top of every app — drag it around. **Tap it and speak**:
+   the recognized text is shown as a toast (it will drive the agent in a later
+   step). While listening the bubble turns green.
+5. If the microphone permission is missing or an error occurs, the bubble turns
+   **red** and shows a message instead of staying silent; tapping it again opens
+   the app so you can grant the permission.
+6. Stop it from the **Disattiva** notification action or the in-app button.
 
 ## Downloading the APK
 

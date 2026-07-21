@@ -2,6 +2,7 @@ package com.logiop.androidagent
 
 import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -38,11 +39,30 @@ import com.logiop.androidagent.ui.theme.AndroidAgentTheme
 
 class MainActivity : FragmentActivity() {
 
+    companion object {
+        const val EXTRA_REQUEST_MIC = "com.logiop.androidagent.REQUEST_MIC"
+    }
+
     private val overlayGranted = mutableStateOf(false)
+    private val micGranted = mutableStateOf(false)
     private val agentRunning = mutableStateOf(false)
+
+    /** Set when the microphone request should be followed by starting the overlay. */
+    private var startOverlayAfterMic = false
 
     private val requestNotifications =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* best effort */ }
+
+    private val requestMic =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            micGranted.value = granted
+            if (startOverlayAfterMic) {
+                startOverlayAfterMic = false
+                // Start the overlay even if the mic was denied; the bubble
+                // signals the missing permission when the user tries to talk.
+                startOverlay()
+            }
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -58,20 +78,38 @@ class MainActivity : FragmentActivity() {
                     AgentScreen(
                         modifier = Modifier.padding(innerPadding),
                         overlayGranted = overlayGranted.value,
+                        micGranted = micGranted.value,
                         agentRunning = agentRunning.value,
                         onGrantOverlay = ::openOverlaySettings,
+                        onGrantMic = ::requestMicPermission,
                         onActivate = ::authenticateAndStart,
                         onDeactivate = ::stopOverlay,
                     )
                 }
             }
         }
+
+        handleIntent(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleIntent(intent)
     }
 
     override fun onResume() {
         super.onResume()
         overlayGranted.value = Settings.canDrawOverlays(this)
+        micGranted.value = hasMicPermission()
         agentRunning.value = OverlayService.isRunning
+    }
+
+    /** Handles the "grant microphone" request coming from the overlay bubble. */
+    private fun handleIntent(intent: Intent?) {
+        if (intent?.getBooleanExtra(EXTRA_REQUEST_MIC, false) == true && !hasMicPermission()) {
+            requestMicPermission()
+        }
     }
 
     private fun openOverlaySettings() {
@@ -81,6 +119,10 @@ class MainActivity : FragmentActivity() {
                 Uri.parse("package:$packageName"),
             ),
         )
+    }
+
+    private fun requestMicPermission() {
+        requestMic.launch(Manifest.permission.RECORD_AUDIO)
     }
 
     private fun authenticateAndStart() {
@@ -106,7 +148,7 @@ class MainActivity : FragmentActivity() {
             ContextCompat.getMainExecutor(this),
             object : BiometricPrompt.AuthenticationCallback() {
                 override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                    startOverlay()
+                    ensureMicThenStartOverlay()
                 }
 
                 override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
@@ -129,6 +171,15 @@ class MainActivity : FragmentActivity() {
         prompt.authenticate(info)
     }
 
+    private fun ensureMicThenStartOverlay() {
+        if (hasMicPermission()) {
+            startOverlay()
+        } else {
+            startOverlayAfterMic = true
+            requestMicPermission()
+        }
+    }
+
     private fun startOverlay() {
         ContextCompat.startForegroundService(this, Intent(this, OverlayService::class.java))
         agentRunning.value = true
@@ -139,6 +190,10 @@ class MainActivity : FragmentActivity() {
         agentRunning.value = false
     }
 
+    private fun hasMicPermission(): Boolean =
+        ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) ==
+            PackageManager.PERMISSION_GRANTED
+
     private fun toast(message: CharSequence) =
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
 }
@@ -146,8 +201,10 @@ class MainActivity : FragmentActivity() {
 @Composable
 fun AgentScreen(
     overlayGranted: Boolean,
+    micGranted: Boolean,
     agentRunning: Boolean,
     onGrantOverlay: () -> Unit,
+    onGrantMic: () -> Unit,
     onActivate: () -> Unit,
     onDeactivate: () -> Unit,
     modifier: Modifier = Modifier,
@@ -171,12 +228,30 @@ fun AgentScreen(
         }
         Text(text = statusText, style = MaterialTheme.typography.bodyLarge)
 
+        Text(
+            text = if (micGranted) {
+                stringResource(R.string.mic_status_ready)
+            } else {
+                stringResource(R.string.mic_status_denied)
+            },
+            style = MaterialTheme.typography.bodyMedium,
+        )
+
         if (!overlayGranted) {
             Button(
                 onClick = onGrantOverlay,
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(stringResource(R.string.grant_overlay))
+            }
+        }
+
+        if (!micGranted) {
+            OutlinedButton(
+                onClick = onGrantMic,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(R.string.grant_mic))
             }
         }
 
@@ -204,8 +279,10 @@ fun AgentScreenPreview() {
     AndroidAgentTheme {
         AgentScreen(
             overlayGranted = true,
+            micGranted = false,
             agentRunning = false,
             onGrantOverlay = {},
+            onGrantMic = {},
             onActivate = {},
             onDeactivate = {},
         )
