@@ -40,6 +40,11 @@
             android:exported="false"
             android:label="@string/whitelist_title" />
 
+        <activity
+            android:name=".LogActivity"
+            android:exported="false"
+            android:label="@string/log_title" />
+
         <service
             android:name=".overlay.OverlayService"
             android:exported="false"

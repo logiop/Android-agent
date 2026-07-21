@@ -97,6 +97,7 @@ class MainActivity : FragmentActivity() {
                         onGrantAccessibility = ::openAccessibilitySettings,
                         onImportModel = ::launchModelPicker,
                         onManageWhitelist = ::openWhitelist,
+                        onShowLog = ::openLog,
                         onActivate = ::authenticateAndStart,
                         onDeactivate = ::stopOverlay,
                     )
@@ -156,6 +157,10 @@ class MainActivity : FragmentActivity() {
 
     private fun openWhitelist() {
         startActivity(Intent(this, WhitelistActivity::class.java))
+    }
+
+    private fun openLog() {
+        startActivity(Intent(this, LogActivity::class.java))
     }
 
     private fun importModel(uri: Uri) {
@@ -254,6 +259,7 @@ fun AgentScreen(
     onGrantAccessibility: () -> Unit,
     onImportModel: () -> Unit,
     onManageWhitelist: () -> Unit,
+    onShowLog: () -> Unit,
     onActivate: () -> Unit,
     onDeactivate: () -> Unit,
     modifier: Modifier = Modifier,
@@ -345,6 +351,13 @@ fun AgentScreen(
             Text(stringResource(R.string.manage_whitelist))
         }
 
+        OutlinedButton(
+            onClick = onShowLog,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(stringResource(R.string.show_log))
+        }
+
         Button(
             onClick = onActivate,
             enabled = overlayGranted && !agentRunning,
@@ -378,6 +391,7 @@ fun AgentScreenPreview() {
             onGrantAccessibility = {},
             onImportModel = {},
             onManageWhitelist = {},
+            onShowLog = {},
             onActivate = {},
             onDeactivate = {},
         )

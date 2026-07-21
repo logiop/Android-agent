@@ -8,6 +8,7 @@ import com.logiop.androidagent.brain.AgentAction
 import com.logiop.androidagent.brain.Brain
 import com.logiop.androidagent.hands.AgentAccessibilityService
 import com.logiop.androidagent.hands.AppLauncher
+import com.logiop.androidagent.security.AuditLog
 
 /**
  * Drives the agent loop: command + UI tree → LLM action → execute → re-read →
@@ -22,6 +23,7 @@ class AgentLoop(
     private val context: Context,
     private val brain: Brain,
     private val whitelist: Whitelist,
+    private val auditLog: AuditLog,
     private val host: Host,
 ) {
 
@@ -49,6 +51,7 @@ class AgentLoop(
         noProgress = 0
         lastSignature = null
         running = true
+        auditLog.record("COMMAND \"$command\"")
         runStep()
     }
 
@@ -95,13 +98,16 @@ class AgentLoop(
             }
             // Navigation is non-destructive and allowed regardless of whitelist.
             "open_app" -> {
+                auditLog.record("open_app \"${action.target}\"")
                 AppLauncher.openApp(context, action.target)
                 host.onInfo(describe(action))
                 continueAfterAction()
                 return
             }
             "search" -> {
-                AppLauncher.googleSearch(context, action.text.ifBlank { action.target })
+                val query = action.text.ifBlank { action.target }
+                auditLog.record("search \"$query\"")
+                AppLauncher.googleSearch(context, query)
                 host.onInfo(describe(action))
                 continueAfterAction()
                 return
@@ -110,17 +116,21 @@ class AgentLoop(
 
         // Control actions operate inside the current app: enforce the whitelist.
         if (currentPackage == null || !whitelist.isAllowed(currentPackage)) {
+            auditLog.record("BLOCKED pkg=${currentPackage ?: "?"} ${action.action} \"${action.target}\"")
             finish(context.getString(R.string.agent_blocked_app, currentPackage ?: "?"))
             return
         }
 
         if (SafetyPolicy.isIrreversible(action)) {
+            auditLog.record("CONFIRM_REQUEST ${describe(action)}")
             host.requestConfirmation(describe(action)) { confirmed ->
                 if (!running) return@requestConfirmation
                 if (confirmed) {
+                    auditLog.record("CONFIRM_GRANTED ${describe(action)}")
                     performControl(action)
                     continueAfterAction()
                 } else {
+                    auditLog.record("CONFIRM_DENIED ${describe(action)}")
                     finish(context.getString(R.string.agent_cancelled))
                 }
             }
@@ -138,6 +148,7 @@ class AgentLoop(
             "scroll" -> service.scroll(forward = action.target != "up" && action.target != "backward")
             else -> false
         }
+        auditLog.record("${action.action} \"${action.text.ifBlank { action.target }}\" ok=$ok")
         host.onInfo(describe(action) + if (ok) "" else " " + context.getString(R.string.agent_action_failed))
     }
 
@@ -165,6 +176,7 @@ class AgentLoop(
     private fun finish(message: String) {
         running = false
         main.removeCallbacksAndMessages(null)
+        auditLog.record("END $message")
         host.onFinished(message)
     }
 

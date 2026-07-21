@@ -36,6 +36,7 @@ import com.logiop.androidagent.hands.AgentAccessibilityService
 import com.logiop.androidagent.hands.AppLauncher
 import com.logiop.androidagent.hands.Command
 import com.logiop.androidagent.hands.CommandInterpreter
+import com.logiop.androidagent.security.AuditLog
 import com.logiop.androidagent.voice.VoiceRecognizer
 import kotlin.math.abs
 
@@ -81,6 +82,7 @@ class OverlayService : Service() {
 
     private lateinit var voice: VoiceRecognizer
     private lateinit var brain: Brain
+    private lateinit var auditLog: AuditLog
     private lateinit var agentLoop: AgentLoop
     private val mainHandler = Handler(Looper.getMainLooper())
 
@@ -90,7 +92,8 @@ class OverlayService : Service() {
         super.onCreate()
         voice = VoiceRecognizer(this)
         brain = Brain(this)
-        agentLoop = AgentLoop(this, brain, Whitelist(this), agentHost)
+        auditLog = AuditLog(this)
+        agentLoop = AgentLoop(this, brain, Whitelist(this), auditLog, agentHost)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -227,6 +230,7 @@ class OverlayService : Service() {
         when (val command = CommandInterpreter.interpret(text)) {
             is Command.OpenApp -> {
                 val opened = AppLauncher.openApp(this, command.query)
+                auditLog.record("open_app \"${command.query}\" ok=$opened")
                 val message = if (opened) {
                     getString(R.string.cmd_opening, command.query)
                 } else {
@@ -236,6 +240,7 @@ class OverlayService : Service() {
             }
 
             is Command.GoogleSearch -> {
+                auditLog.record("search \"${command.query}\"")
                 AppLauncher.googleSearch(this, command.query)
                 Toast.makeText(
                     this,

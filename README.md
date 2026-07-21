@@ -32,6 +32,9 @@ Command flow:
     **confirmation dialog** before running.
   - Screen text is passed to the model as **untrusted data** with an explicit
     instruction to ignore any commands embedded in it (prompt-injection defense).
+  - Every agent action is written to an **encrypted local audit log**
+    (AES-256/GCM with an Android Keystore key); view it decrypted under **Mostra
+    log azioni**.
 
 ### Providing the model
 
