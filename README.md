@@ -9,32 +9,42 @@ The overall project vision and Phase 1 plan (always-on AI overlay, Italian
 voice control, on-device LLM, and an AccessibilityService to drive apps) live
 in [`PROJECT_PLAN.md`](PROJECT_PLAN.md).
 
-## Current build (Phase 1 · Step 3)
+## Current build (Phase 1 · Step 4)
 
-Implemented so far: a draggable floating **overlay bubble** gated behind
-**biometric unlock**, **Italian on-device voice recognition** triggered by
-tapping the bubble, and the **"hands"** — an `AccessibilityService` that reads
-the screen and runs deterministic commands.
+Implemented so far: a draggable **overlay bubble** gated behind **biometric
+unlock**, **Italian on-device voice recognition**, the **"hands"**
+(`AccessibilityService` that reads the screen and acts), and the **"brain"** — a
+local LLM (MediaPipe LLM Inference) that turns a command plus the current screen
+into a `{action, target, text}` decision.
 
-Voice commands understood right now (deterministic, no LLM yet):
+Command flow:
 
-- **"apri &lt;app&gt;"** / "avvia &lt;app&gt;" — launches the app by name.
-- **"cerca &lt;query&gt; su google"** / "google &lt;query&gt;" — opens a Google search.
-- anything else — the accessibility service reads the current screen and reports
-  how many interactive elements it found (the LLM will plan these in a later
-  step; the compact UI tree is logged under the `AndroidAgent` tag).
+- **"apri &lt;app&gt;"** / **"cerca &lt;query&gt; su google"** run
+  deterministically without the model.
+- Any other command is planned by the LLM. Safe actions (`open_app`, `search`)
+  are executed; `tap` / `type` / `scroll` are only reported for now — executing
+  them needs the safety layer (whitelist + confirmation) coming in the next step.
+- The screen text is passed to the model as **untrusted data** with an explicit
+  instruction to ignore any commands embedded in it (prompt-injection defense).
+
+### Providing the model
+
+The model is not bundled in the APK (too large). Download a MediaPipe-compatible
+`.task` LLM bundle onto the phone, then in the app tap **Importa modello LLM**
+and pick the file — it is copied into the app's private storage. Until a model
+is imported, free-form commands report that the model is missing.
 
 To test on the device:
 
-1. Grant **overlay** and **microphone**, and tap **Abilita accessibilità** to
-   turn on the "Android Agent" accessibility service in system settings.
+1. Grant **overlay** and **microphone**, tap **Abilita accessibilità**, and
+   **Importa modello LLM**.
 2. Tap **Attiva agente** and confirm with fingerprint / face / device PIN.
-3. Tap the bubble and say **"apri Chrome"**, then **"cerca meteo Genova su
-   Google"** — the app opens and the search runs.
-4. Say a free-form command over any app to see the screen-read element count.
-5. Missing permissions never fail silently: the bubble turns **red** with a
-   message and routes you to the right settings screen.
-6. Stop it from the **Disattiva** notification action or the in-app button.
+3. Tap the bubble and say **"apri Chrome"** or **"cerca meteo Genova su
+   Google"**; try a free-form command to see the LLM plan an action (bubble
+   turns blue while thinking).
+4. Missing permissions/model never fail silently: the bubble turns **red** with
+   a message and routes you to the right screen.
+5. Stop it from the **Disattiva** notification action or the in-app button.
 
 ## Downloading the APK
 

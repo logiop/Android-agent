@@ -15,6 +15,12 @@
     <string name="accessibility_status_ready">Accessibilità: attiva.</string>
     <string name="accessibility_status_off">Accessibilità disattivata: l\'agente non può leggere o comandare le app.</string>
     <string name="grant_accessibility">Abilita accessibilità</string>
+    <string name="model_status_ready">Modello LLM: pronto.</string>
+    <string name="model_status_missing">Modello LLM assente: importa un file .task per attivare il cervello.</string>
+    <string name="import_model">Importa modello LLM</string>
+    <string name="model_importing">Importazione del modello in corso…</string>
+    <string name="model_imported">Modello importato.</string>
+    <string name="model_import_failed">Importazione del modello non riuscita.</string>
 
     <!-- Biometric -->
     <string name="biometric_title">Sblocca Android Agent</string>
@@ -28,12 +34,18 @@
     <string name="bubble_content_description">Bolla Android Agent</string>
     <string name="mic_permission_needed">Permesso microfono negato. Concedilo per usare la voce.</string>
     <string name="accessibility_needed">Abilita il servizio di accessibilità per comandare le app.</string>
+    <string name="model_missing">Modello LLM assente. Importalo dall\'app.</string>
 
     <!-- Command execution -->
     <string name="cmd_opening">Apro %1$s…</string>
     <string name="cmd_app_not_found">App non trovata: %1$s</string>
     <string name="cmd_searching">Cerco su Google: %1$s</string>
-    <string name="cmd_screen_read">Schermo letto: %1$d elementi interattivi.</string>
+    <string name="action_planned">Pianificato: %1$s → %2$s</string>
+
+    <!-- Brain (LLM) -->
+    <string name="brain_thinking">Sto pensando…</string>
+    <string name="brain_failed">Errore del modello.</string>
+    <string name="brain_bad_output">Il modello non ha restituito un\'azione valida.</string>
 
     <!-- Accessibility service -->
     <string name="accessibility_label">Android Agent</string>

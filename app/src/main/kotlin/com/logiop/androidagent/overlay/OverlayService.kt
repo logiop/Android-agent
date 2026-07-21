@@ -27,6 +27,8 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.logiop.androidagent.MainActivity
 import com.logiop.androidagent.R
+import com.logiop.androidagent.brain.AgentAction
+import com.logiop.androidagent.brain.Brain
 import com.logiop.androidagent.hands.AgentAccessibilityService
 import com.logiop.androidagent.hands.AppLauncher
 import com.logiop.androidagent.hands.Command
@@ -66,6 +68,7 @@ class OverlayService : Service() {
     private enum class BubbleState(val color: Int) {
         IDLE(0xFF6650A4.toInt()),
         LISTENING(0xFF2E7D32.toInt()),
+        THINKING(0xFF1565C0.toInt()),
         ERROR(0xFFC62828.toInt()),
     }
 
@@ -73,6 +76,7 @@ class OverlayService : Service() {
     private var bubbleView: View? = null
 
     private lateinit var voice: VoiceRecognizer
+    private lateinit var brain: Brain
     private val mainHandler = Handler(Looper.getMainLooper())
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -80,6 +84,7 @@ class OverlayService : Service() {
     override fun onCreate() {
         super.onCreate()
         voice = VoiceRecognizer(this)
+        brain = Brain(this)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -101,6 +106,7 @@ class OverlayService : Service() {
         isRunning = false
         mainHandler.removeCallbacksAndMessages(null)
         voice.destroy()
+        brain.close()
         bubbleView?.let { view ->
             runCatching { windowManager.removeView(view) }
         }
@@ -235,8 +241,10 @@ class OverlayService : Service() {
     }
 
     /**
-     * Until the LLM "brain" lands, a free-form command just proves the hands can
-     * read the screen: it reports how many interactive elements were found.
+     * A free-form command is planned by the LLM: capture the screen, ask the
+     * brain for the next action, then run the safe ones. Tap/type/scroll are
+     * only reported for now — executing them needs the safety layer (whitelist +
+     * confirmation) added in the next step.
      */
     private fun handleFreeform(text: String) {
         val service = AgentAccessibilityService.instance
@@ -245,13 +253,54 @@ class OverlayService : Service() {
             openAccessibilitySettings()
             return
         }
+        if (!brain.isModelAvailable()) {
+            signalError(getString(R.string.model_missing))
+            openAppForModel()
+            return
+        }
+
         val snapshot = service.captureScreen()
         Log.d(TAG, "Comando: \"$text\"\n${snapshot.compactText}")
-        Toast.makeText(
-            this,
-            getString(R.string.cmd_screen_read, snapshot.elements.size),
-            Toast.LENGTH_LONG,
-        ).show()
+        setBubbleState(BubbleState.THINKING)
+        Toast.makeText(this, getString(R.string.brain_thinking), Toast.LENGTH_SHORT).show()
+
+        brain.plan(text, snapshot.compactText, object : Brain.Callback {
+            override fun onAction(action: AgentAction, raw: String) {
+                Log.d(TAG, "LLM: $raw")
+                setBubbleState(BubbleState.IDLE)
+                executePlanned(action)
+            }
+
+            override fun onError(message: String) {
+                signalError(message)
+            }
+        })
+    }
+
+    private fun executePlanned(action: AgentAction) {
+        when (action.action) {
+            "open_app" -> {
+                val opened = AppLauncher.openApp(this, action.target)
+                toastLong(
+                    if (opened) {
+                        getString(R.string.cmd_opening, action.target)
+                    } else {
+                        getString(R.string.cmd_app_not_found, action.target)
+                    },
+                )
+            }
+
+            "search" -> {
+                val query = action.text.ifBlank { action.target }
+                AppLauncher.googleSearch(this, query)
+                toastLong(getString(R.string.cmd_searching, query))
+            }
+
+            else -> {
+                // tap / type / scroll / done: execution arrives with the safety layer.
+                toastLong(getString(R.string.action_planned, action.action, action.target))
+            }
+        }
     }
 
     private fun openAccessibilitySettings() {
@@ -260,6 +309,18 @@ class OverlayService : Service() {
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
         )
     }
+
+    private fun openAppForModel() {
+        startActivity(
+            Intent(this, MainActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                putExtra(MainActivity.EXTRA_IMPORT_MODEL, true)
+            },
+        )
+    }
+
+    private fun toastLong(message: String) =
+        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
 
     private fun signalError(message: String) {
         setBubbleState(BubbleState.ERROR)

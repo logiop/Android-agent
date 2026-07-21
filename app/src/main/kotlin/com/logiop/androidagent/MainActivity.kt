@@ -34,6 +34,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
+import com.logiop.androidagent.brain.ModelRepository
 import com.logiop.androidagent.hands.AgentAccessibilityService
 import com.logiop.androidagent.overlay.OverlayService
 import com.logiop.androidagent.ui.theme.AndroidAgentTheme
@@ -42,11 +43,13 @@ class MainActivity : FragmentActivity() {
 
     companion object {
         const val EXTRA_REQUEST_MIC = "com.logiop.androidagent.REQUEST_MIC"
+        const val EXTRA_IMPORT_MODEL = "com.logiop.androidagent.IMPORT_MODEL"
     }
 
     private val overlayGranted = mutableStateOf(false)
     private val micGranted = mutableStateOf(false)
     private val accessibilityEnabled = mutableStateOf(false)
+    private val modelReady = mutableStateOf(false)
     private val agentRunning = mutableStateOf(false)
 
     /** Set when the microphone request should be followed by starting the overlay. */
@@ -66,6 +69,11 @@ class MainActivity : FragmentActivity() {
             }
         }
 
+    private val pickModel =
+        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            if (uri != null) importModel(uri)
+        }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -82,10 +90,12 @@ class MainActivity : FragmentActivity() {
                         overlayGranted = overlayGranted.value,
                         micGranted = micGranted.value,
                         accessibilityEnabled = accessibilityEnabled.value,
+                        modelReady = modelReady.value,
                         agentRunning = agentRunning.value,
                         onGrantOverlay = ::openOverlaySettings,
                         onGrantMic = ::requestMicPermission,
                         onGrantAccessibility = ::openAccessibilitySettings,
+                        onImportModel = ::launchModelPicker,
                         onActivate = ::authenticateAndStart,
                         onDeactivate = ::stopOverlay,
                     )
@@ -107,13 +117,17 @@ class MainActivity : FragmentActivity() {
         overlayGranted.value = Settings.canDrawOverlays(this)
         micGranted.value = hasMicPermission()
         accessibilityEnabled.value = AgentAccessibilityService.isEnabled(this)
+        modelReady.value = ModelRepository.isReady(this)
         agentRunning.value = OverlayService.isRunning
     }
 
-    /** Handles the "grant microphone" request coming from the overlay bubble. */
+    /** Handles requests forwarded from the overlay bubble (grant mic / import model). */
     private fun handleIntent(intent: Intent?) {
         if (intent?.getBooleanExtra(EXTRA_REQUEST_MIC, false) == true && !hasMicPermission()) {
             requestMicPermission()
+        }
+        if (intent?.getBooleanExtra(EXTRA_IMPORT_MODEL, false) == true && !ModelRepository.isReady(this)) {
+            launchModelPicker()
         }
     }
 
@@ -132,6 +146,22 @@ class MainActivity : FragmentActivity() {
 
     private fun openAccessibilitySettings() {
         startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+    }
+
+    private fun launchModelPicker() {
+        // Accept any file type; MediaPipe .task bundles have no standard MIME.
+        pickModel.launch(arrayOf("*/*"))
+    }
+
+    private fun importModel(uri: Uri) {
+        toast(getString(R.string.model_importing))
+        Thread {
+            val ok = ModelRepository.importFrom(this, uri)
+            runOnUiThread {
+                modelReady.value = ModelRepository.isReady(this)
+                toast(getString(if (ok) R.string.model_imported else R.string.model_import_failed))
+            }
+        }.start()
     }
 
     private fun authenticateAndStart() {
@@ -212,10 +242,12 @@ fun AgentScreen(
     overlayGranted: Boolean,
     micGranted: Boolean,
     accessibilityEnabled: Boolean,
+    modelReady: Boolean,
     agentRunning: Boolean,
     onGrantOverlay: () -> Unit,
     onGrantMic: () -> Unit,
     onGrantAccessibility: () -> Unit,
+    onImportModel: () -> Unit,
     onActivate: () -> Unit,
     onDeactivate: () -> Unit,
     modifier: Modifier = Modifier,
@@ -257,6 +289,15 @@ fun AgentScreen(
             style = MaterialTheme.typography.bodyMedium,
         )
 
+        Text(
+            text = if (modelReady) {
+                stringResource(R.string.model_status_ready)
+            } else {
+                stringResource(R.string.model_status_missing)
+            },
+            style = MaterialTheme.typography.bodyMedium,
+        )
+
         if (!overlayGranted) {
             Button(
                 onClick = onGrantOverlay,
@@ -282,6 +323,13 @@ fun AgentScreen(
             ) {
                 Text(stringResource(R.string.grant_accessibility))
             }
+        }
+
+        OutlinedButton(
+            onClick = onImportModel,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(stringResource(R.string.import_model))
         }
 
         Button(
@@ -310,10 +358,12 @@ fun AgentScreenPreview() {
             overlayGranted = true,
             micGranted = false,
             accessibilityEnabled = false,
+            modelReady = false,
             agentRunning = false,
             onGrantOverlay = {},
             onGrantMic = {},
             onGrantAccessibility = {},
+            onImportModel = {},
             onActivate = {},
             onDeactivate = {},
         )
