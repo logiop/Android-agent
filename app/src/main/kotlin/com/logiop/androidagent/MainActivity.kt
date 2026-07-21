@@ -34,6 +34,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
+import com.logiop.androidagent.hands.AgentAccessibilityService
 import com.logiop.androidagent.overlay.OverlayService
 import com.logiop.androidagent.ui.theme.AndroidAgentTheme
 
@@ -45,6 +46,7 @@ class MainActivity : FragmentActivity() {
 
     private val overlayGranted = mutableStateOf(false)
     private val micGranted = mutableStateOf(false)
+    private val accessibilityEnabled = mutableStateOf(false)
     private val agentRunning = mutableStateOf(false)
 
     /** Set when the microphone request should be followed by starting the overlay. */
@@ -79,9 +81,11 @@ class MainActivity : FragmentActivity() {
                         modifier = Modifier.padding(innerPadding),
                         overlayGranted = overlayGranted.value,
                         micGranted = micGranted.value,
+                        accessibilityEnabled = accessibilityEnabled.value,
                         agentRunning = agentRunning.value,
                         onGrantOverlay = ::openOverlaySettings,
                         onGrantMic = ::requestMicPermission,
+                        onGrantAccessibility = ::openAccessibilitySettings,
                         onActivate = ::authenticateAndStart,
                         onDeactivate = ::stopOverlay,
                     )
@@ -102,6 +106,7 @@ class MainActivity : FragmentActivity() {
         super.onResume()
         overlayGranted.value = Settings.canDrawOverlays(this)
         micGranted.value = hasMicPermission()
+        accessibilityEnabled.value = AgentAccessibilityService.isEnabled(this)
         agentRunning.value = OverlayService.isRunning
     }
 
@@ -123,6 +128,10 @@ class MainActivity : FragmentActivity() {
 
     private fun requestMicPermission() {
         requestMic.launch(Manifest.permission.RECORD_AUDIO)
+    }
+
+    private fun openAccessibilitySettings() {
+        startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
     }
 
     private fun authenticateAndStart() {
@@ -202,9 +211,11 @@ class MainActivity : FragmentActivity() {
 fun AgentScreen(
     overlayGranted: Boolean,
     micGranted: Boolean,
+    accessibilityEnabled: Boolean,
     agentRunning: Boolean,
     onGrantOverlay: () -> Unit,
     onGrantMic: () -> Unit,
+    onGrantAccessibility: () -> Unit,
     onActivate: () -> Unit,
     onDeactivate: () -> Unit,
     modifier: Modifier = Modifier,
@@ -237,6 +248,15 @@ fun AgentScreen(
             style = MaterialTheme.typography.bodyMedium,
         )
 
+        Text(
+            text = if (accessibilityEnabled) {
+                stringResource(R.string.accessibility_status_ready)
+            } else {
+                stringResource(R.string.accessibility_status_off)
+            },
+            style = MaterialTheme.typography.bodyMedium,
+        )
+
         if (!overlayGranted) {
             Button(
                 onClick = onGrantOverlay,
@@ -252,6 +272,15 @@ fun AgentScreen(
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(stringResource(R.string.grant_mic))
+            }
+        }
+
+        if (!accessibilityEnabled) {
+            OutlinedButton(
+                onClick = onGrantAccessibility,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(R.string.grant_accessibility))
             }
         }
 
@@ -280,9 +309,11 @@ fun AgentScreenPreview() {
         AgentScreen(
             overlayGranted = true,
             micGranted = false,
+            accessibilityEnabled = false,
             agentRunning = false,
             onGrantOverlay = {},
             onGrantMic = {},
+            onGrantAccessibility = {},
             onActivate = {},
             onDeactivate = {},
         )

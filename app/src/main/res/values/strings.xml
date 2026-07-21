@@ -12,6 +12,9 @@
     <string name="deactivate_agent">Disattiva agente</string>
     <string name="mic_status_ready">Microfono: concesso.</string>
     <string name="mic_status_denied">Microfono negato: il comando vocale non funzionerà finché non lo concedi.</string>
+    <string name="accessibility_status_ready">Accessibilità: attiva.</string>
+    <string name="accessibility_status_off">Accessibilità disattivata: l\'agente non può leggere o comandare le app.</string>
+    <string name="grant_accessibility">Abilita accessibilità</string>
 
     <!-- Biometric -->
     <string name="biometric_title">Sblocca Android Agent</string>
@@ -24,7 +27,17 @@
     <!-- Overlay bubble -->
     <string name="bubble_content_description">Bolla Android Agent</string>
     <string name="mic_permission_needed">Permesso microfono negato. Concedilo per usare la voce.</string>
-    <string name="voice_heard">Ho sentito: %1$s</string>
+    <string name="accessibility_needed">Abilita il servizio di accessibilità per comandare le app.</string>
+
+    <!-- Command execution -->
+    <string name="cmd_opening">Apro %1$s…</string>
+    <string name="cmd_app_not_found">App non trovata: %1$s</string>
+    <string name="cmd_searching">Cerco su Google: %1$s</string>
+    <string name="cmd_screen_read">Schermo letto: %1$d elementi interattivi.</string>
+
+    <!-- Accessibility service -->
+    <string name="accessibility_label">Android Agent</string>
+    <string name="accessibility_description">Permette all\'agente di leggere lo schermo ed eseguire tap, digitazione e scorrimento nelle app che autorizzi.</string>
 
     <!-- Voice recognition errors -->
     <string name="voice_unavailable">Riconoscimento vocale non disponibile su questo dispositivo.</string>

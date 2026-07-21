@@ -9,25 +9,31 @@ The overall project vision and Phase 1 plan (always-on AI overlay, Italian
 voice control, on-device LLM, and an AccessibilityService to drive apps) live
 in [`PROJECT_PLAN.md`](PROJECT_PLAN.md).
 
-## Current build (Phase 1 · Step 2)
+## Current build (Phase 1 · Step 3)
 
 Implemented so far: a draggable floating **overlay bubble** gated behind
-**biometric unlock**, plus **Italian on-device voice recognition** triggered by
-tapping the bubble.
+**biometric unlock**, **Italian on-device voice recognition** triggered by
+tapping the bubble, and the **"hands"** — an `AccessibilityService` that reads
+the screen and runs deterministic commands.
+
+Voice commands understood right now (deterministic, no LLM yet):
+
+- **"apri &lt;app&gt;"** / "avvia &lt;app&gt;" — launches the app by name.
+- **"cerca &lt;query&gt; su google"** / "google &lt;query&gt;" — opens a Google search.
+- anything else — the accessibility service reads the current screen and reports
+  how many interactive elements it found (the LLM will plan these in a later
+  step; the compact UI tree is logged under the `AndroidAgent` tag).
 
 To test on the device:
 
-1. Open the app and tap **Concedi permesso overlay**, then enable "Display over
-   other apps" for Android Agent and go back.
-2. Tap **Concedi microfono** and allow the `RECORD_AUDIO` permission (it is also
-   requested automatically the first time you activate the agent).
-3. Tap **Attiva agente** and confirm with fingerprint / face / device PIN.
-4. A bubble appears on top of every app — drag it around. **Tap it and speak**:
-   the recognized text is shown as a toast (it will drive the agent in a later
-   step). While listening the bubble turns green.
-5. If the microphone permission is missing or an error occurs, the bubble turns
-   **red** and shows a message instead of staying silent; tapping it again opens
-   the app so you can grant the permission.
+1. Grant **overlay** and **microphone**, and tap **Abilita accessibilità** to
+   turn on the "Android Agent" accessibility service in system settings.
+2. Tap **Attiva agente** and confirm with fingerprint / face / device PIN.
+3. Tap the bubble and say **"apri Chrome"**, then **"cerca meteo Genova su
+   Google"** — the app opens and the search runs.
+4. Say a free-form command over any app to see the screen-read element count.
+5. Missing permissions never fail silently: the bubble turns **red** with a
+   message and routes you to the right settings screen.
 6. Stop it from the **Disattiva** notification action or the in-app button.
 
 ## Downloading the APK

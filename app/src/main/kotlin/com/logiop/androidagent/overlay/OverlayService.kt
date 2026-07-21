@@ -15,6 +15,8 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.provider.Settings
+import android.util.Log
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.MotionEvent
@@ -25,6 +27,10 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.logiop.androidagent.MainActivity
 import com.logiop.androidagent.R
+import com.logiop.androidagent.hands.AgentAccessibilityService
+import com.logiop.androidagent.hands.AppLauncher
+import com.logiop.androidagent.hands.Command
+import com.logiop.androidagent.hands.CommandInterpreter
 import com.logiop.androidagent.voice.VoiceRecognizer
 import kotlin.math.abs
 
@@ -45,6 +51,7 @@ class OverlayService : Service() {
 
         const val ACTION_STOP = "com.logiop.androidagent.overlay.STOP"
 
+        private const val TAG = "AndroidAgent"
         private const val CHANNEL_ID = "android_agent_overlay"
         private const val NOTIFICATION_ID = 1001
 
@@ -193,18 +200,65 @@ class OverlayService : Service() {
         voice.start(object : VoiceRecognizer.Callbacks {
             override fun onResult(text: String) {
                 setBubbleState(BubbleState.IDLE)
-                // Placeholder: the "brain" step will consume this command.
-                Toast.makeText(
-                    this@OverlayService,
-                    getString(R.string.voice_heard, text),
-                    Toast.LENGTH_LONG,
-                ).show()
+                handleCommand(text)
             }
 
             override fun onError(message: String) {
                 signalError(message)
             }
         })
+    }
+
+    private fun handleCommand(text: String) {
+        when (val command = CommandInterpreter.interpret(text)) {
+            is Command.OpenApp -> {
+                val opened = AppLauncher.openApp(this, command.query)
+                val message = if (opened) {
+                    getString(R.string.cmd_opening, command.query)
+                } else {
+                    getString(R.string.cmd_app_not_found, command.query)
+                }
+                Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+            }
+
+            is Command.GoogleSearch -> {
+                AppLauncher.googleSearch(this, command.query)
+                Toast.makeText(
+                    this,
+                    getString(R.string.cmd_searching, command.query),
+                    Toast.LENGTH_LONG,
+                ).show()
+            }
+
+            is Command.Freeform -> handleFreeform(command.text)
+        }
+    }
+
+    /**
+     * Until the LLM "brain" lands, a free-form command just proves the hands can
+     * read the screen: it reports how many interactive elements were found.
+     */
+    private fun handleFreeform(text: String) {
+        val service = AgentAccessibilityService.instance
+        if (service == null) {
+            signalError(getString(R.string.accessibility_needed))
+            openAccessibilitySettings()
+            return
+        }
+        val snapshot = service.captureScreen()
+        Log.d(TAG, "Comando: \"$text\"\n${snapshot.compactText}")
+        Toast.makeText(
+            this,
+            getString(R.string.cmd_screen_read, snapshot.elements.size),
+            Toast.LENGTH_LONG,
+        ).show()
+    }
+
+    private fun openAccessibilitySettings() {
+        startActivity(
+            Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+        )
     }
 
     private fun signalError(message: String) {
