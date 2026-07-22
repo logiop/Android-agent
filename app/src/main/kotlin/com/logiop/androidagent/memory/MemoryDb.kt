@@ -36,7 +36,9 @@ class MemoryDb(context: Context) : SQLiteOpenHelper(context, NAME, null, VERSION
                 locator_json TEXT NOT NULL,
                 state_descriptor_json TEXT NOT NULL,
                 param_slots_json TEXT NOT NULL,
-                irreversible INTEGER NOT NULL DEFAULT 0
+                irreversible INTEGER NOT NULL DEFAULT 0,
+                argument TEXT NOT NULL DEFAULT '',
+                slot_name TEXT NOT NULL DEFAULT ''
             )
             """.trimIndent(),
         )
@@ -63,11 +65,14 @@ class MemoryDb(context: Context) : SQLiteOpenHelper(context, NAME, null, VERSION
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        // First schema version; nothing to migrate yet.
+        if (oldVersion < 2) {
+            db.execSQL("ALTER TABLE skill_step ADD COLUMN argument TEXT NOT NULL DEFAULT ''")
+            db.execSQL("ALTER TABLE skill_step ADD COLUMN slot_name TEXT NOT NULL DEFAULT ''")
+        }
     }
 
     private companion object {
         const val NAME = "agent_memory.db"
-        const val VERSION = 1
+        const val VERSION = 2
     }
 }

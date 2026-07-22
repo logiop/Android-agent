@@ -23,9 +23,16 @@ object SkillCompiler {
             .filter { it.isNotBlank() }
             .distinct()
 
-        val (pattern, slots) = buildPattern(trajectory.command, values)
+        val result = buildPatternInternal(trajectory.command, values)
 
         val steps = trajectory.steps.mapIndexed { idx, step ->
+            val slotName = if (step.actionType == "type") {
+                result.valueToSlot.entries
+                    .firstOrNull { it.key.equals(step.argument.trim(), ignoreCase = true) }
+                    ?.value.orEmpty()
+            } else {
+                ""
+            }
             SkillStep(
                 idx = idx,
                 actionType = step.actionType,
@@ -33,14 +40,16 @@ object SkillCompiler {
                 stateDescriptorJson = step.stateFingerprint,
                 paramSlotsJson = "{}",
                 irreversible = step.irreversible,
+                argument = step.argument,
+                slotName = slotName,
             )
         }
 
         return DraftSkill(
             command = trajectory.command,
-            intentPattern = pattern,
+            intentPattern = result.pattern,
             targetApp = trajectory.targetApp,
-            slots = slots,
+            slots = result.slots,
             steps = steps,
         )
     }
@@ -51,8 +60,20 @@ object SkillCompiler {
      * Values not present in the command are skipped (can't be templatized).
      */
     fun buildPattern(command: String, values: List<String>): Pair<String, List<Slot>> {
+        val result = buildPatternInternal(command, values)
+        return result.pattern to result.slots
+    }
+
+    private data class PatternResult(
+        val pattern: String,
+        val slots: List<Slot>,
+        val valueToSlot: Map<String, String>,
+    )
+
+    private fun buildPatternInternal(command: String, values: List<String>): PatternResult {
         var pattern = command
         val slots = mutableListOf<Slot>()
+        val valueToSlot = LinkedHashMap<String, String>()
         var index = 1
         for (value in values) {
             if (value.isBlank()) continue
@@ -61,9 +82,10 @@ object SkillCompiler {
             val name = "slot$index"
             pattern = pattern.substring(0, at) + "{$name}" + pattern.substring(at + value.length)
             slots += Slot(name, inferType(value))
+            valueToSlot[value] = name
             index++
         }
-        return pattern to slots
+        return PatternResult(pattern, slots, valueToSlot)
     }
 
     fun inferType(value: String): SlotType = when {

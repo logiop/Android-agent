@@ -54,6 +54,16 @@ data class SkillStep(
     val stateDescriptorJson: String,
     val paramSlotsJson: String,
     val irreversible: Boolean,
+    /** Literal argument demonstrated (fallback for replay). */
+    val argument: String = "",
+    /** Slot whose value fills [argument] at replay time; empty = literal. */
+    val slotName: String = "",
+)
+
+/** A skill together with its ordered steps, for replay. */
+data class SkillWithSteps(
+    val skill: Skill,
+    val steps: List<SkillStep>,
 )
 
 /** A persisted, parameterized skill. */
