@@ -8,7 +8,9 @@ Kotlin DSL, and a Gradle version catalog.
 The overall project vision and Phase 1 plan (always-on AI overlay, Italian
 voice control, on-device LLM, and an AccessibilityService to drive apps) live
 in [`PROJECT_PLAN.md`](PROJECT_PLAN.md). The Phase 3 plan (procedural memory and
-skill learning) lives in [`PROJECT_PLAN_FASE3.md`](PROJECT_PLAN_FASE3.md).
+skill learning) lives in [`PROJECT_PLAN_FASE3.md`](PROJECT_PLAN_FASE3.md). A
+feasibility note on the Jetpack AppFunctions route (Phase 3.3) is in
+[`docs/APPFUNCTIONS_EVALUATION.md`](docs/APPFUNCTIONS_EVALUATION.md).
 
 ## Developer guide
 
