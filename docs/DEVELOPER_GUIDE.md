@@ -125,11 +125,14 @@ Tocca la bolla e parla:
 - **"apri &lt;app&gt;"** / "avvia &lt;app&gt;" → apre l'app per nome.
 - **"cerca &lt;query&gt; su google"** / "google &lt;query&gt;" → ricerca web.
 
-### Comandi liberi (loop LLM)
-Qualsiasi altro comando entra nel loop: la bolla diventa blu, il modello
-pianifica un'azione `{action,target,text}`, l'agente la esegue e ri-legge lo
-schermo. Le azioni `open_app`/`search` sono sempre permesse; `tap`/`type`/
-`scroll` solo in app **whitelisted**.
+### Comandi liberi (replay skill o loop LLM)
+Per un comando non deterministico l'agente prova in quest'ordine:
+1. **Replay di una skill appresa** (se combacia) — senza LLM, la bolla **non**
+   diventa blu; vedi sotto.
+2. Altrimenti **loop LLM**: la bolla diventa blu, il modello pianifica un'azione
+   `{action,target,text}`, l'agente la esegue e ri-legge lo schermo. Le azioni
+   `open_app`/`search` sono sempre permesse; `tap`/`type`/`scroll` solo in app
+   **whitelisted**.
 
 ### Sicurezza in azione
 - Azione **irreversibile** (invia/pubblica/elimina/paga…): compare il **dialog
@@ -146,8 +149,23 @@ come skill?"**:
 - **Salva skill** → la skill nasce in **quarantena**; la trovi in **"Skill
   apprese"** (con elimina).
 
-> Il **riuso/replay** delle skill è la Fase 3.2, **non ancora attivo**: per ora
-> le skill si apprendono e si salvano soltanto.
+### Riuso / replay delle skill (Fase 3.2)
+Quando un comando combacia con una skill salvata, l'agente la **riesegue in
+replay senza LLM** (più veloce, niente bolla blu):
+- **Modalità supervisionata**: una skill in *quarantena* chiede una conferma
+  pre-run (*"Uso la skill …?"*); dopo **3 replay riusciti** diventa *trusted* e
+  parte diretta.
+- **Sicurezza invariata**: le azioni **irreversibili** chiedono conferma anche
+  in replay.
+- **Tolleranza**: se un elemento si è spostato, l'agente prova a chiudere un
+  dialog imprevisto (solo bottoni neutri — mai "Consenti/Allow") e riprova; se
+  serve fa un **breve fallback col modello**; se non basta, **interrompe e
+  ripassa al loop LLM** (il task si fa comunque).
+- **Ricompilazione**: una skill che fallisce ≥50% dei replay (su ≥3 run) mostra
+  il badge **"da ricompilare"** in "Skill apprese" → riapprendila.
+
+> Nota migrazione: le skill apprese prima della Fase 3.2 non hanno l'argomento
+> salvato → i loro passi `type` non fanno replay. **Riapprendile.**
 
 ---
 
@@ -179,6 +197,17 @@ come skill?"**:
 | Riavvia e riapri "Skill apprese" | Le skill salvate sono ancora lì (SQLite persistente) |
 | Run che non cambia lo schermo | **Nessuna** proposta di skill (StateVerifier) |
 
+### Fase 3.2 — replay e robustezza
+| Passo | Esito atteso |
+| --- | --- |
+| Ripeti un comando che combacia con una skill | Parte il **replay senza bolla blu**, più veloce |
+| Prima run di una skill in quarantena | Chiede conferma pre-run *"Uso la skill …?"* |
+| Ripeti la stessa skill 3 volte con successo | Diventa *trusted*: niente più conferma pre-run |
+| Passo irreversibile durante il replay | Chiede comunque conferma |
+| Dialog imprevisto durante il replay | Chiuso automaticamente (bottone neutro) e replay prosegue |
+| Elemento spostato / skill che devia troppo | Breve fallback col modello; se non basta, "Replay interrotto, riprovo col modello…" |
+| Skill che fallisce spesso (≥50% su ≥3 run) | Badge **"da ricompilare"** in "Skill apprese" |
+
 ---
 
 ## 8. Troubleshooting
@@ -191,6 +220,9 @@ come skill?"**:
 | "Accessibilità disattivata" | Servizio non abilitato | Abilita "Android Agent" in Impostazioni → Accessibilità |
 | Azione di controllo bloccata | App non in whitelist | Aggiungi l'app in "Gestisci whitelist app" |
 | Nessuna proposta di skill dopo una run | Stato non cambiato o 0 step di controllo | Atteso: `StateVerifier` evita skill "vuote" |
+| Una skill non parte in replay (usa il modello) | Nessun match regex, oppure skill pre-3.2 senza argomento | Verifica che il comando combaci col pattern `{slot}`; riapprendi le skill vecchie |
+| Replay si interrompe e "riprova col modello" | Deviazione oltre la tolleranza (UI cambiata) | Atteso: fallback di sicurezza; se ricorrente, la skill andrà ricompilata |
+| Skill con badge "da ricompilare" | ≥50% di replay falliti su ≥3 run | Riapprendi la skill (le UI sono cambiate) |
 | "apri Chrome e cerca X" apre solo Chrome | Comando composto: lo shortcut deterministico prende solo la prima app | Dai due comandi separati, oppure lascia che sia il loop LLM a gestirlo |
 | Prima inferenza lentissima | Caricamento del modello in memoria | Normale; le run successive sono più rapide |
 | CI rossa dopo un push | Errore di compilazione o unit test fallito | Apri Actions → job `build` → leggi l'errore |
