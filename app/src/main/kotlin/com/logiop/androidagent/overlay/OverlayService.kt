@@ -105,7 +105,7 @@ class OverlayService : Service() {
         auditLog = AuditLog(this)
         skillStore = SkillStore(this)
         agentLoop = AgentLoop(this, brain, Whitelist(this), auditLog, agentHost)
-        replayer = SkillReplayer(this, skillStore, auditLog, replayHost)
+        replayer = SkillReplayer(this, skillStore, auditLog, brain, replayHost)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
