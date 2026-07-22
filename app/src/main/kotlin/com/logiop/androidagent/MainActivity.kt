@@ -386,6 +386,11 @@ fun AgentScreen(
         ) {
             Text(stringResource(R.string.deactivate_agent))
         }
+
+        Text(
+            text = "build ${BuildConfig.VERSION_NAME}",
+            style = MaterialTheme.typography.bodySmall,
+        )
     }
 }
 
