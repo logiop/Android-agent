@@ -45,11 +45,13 @@
     <string name="skills_title">Skill apprese</string>
     <string name="skills_empty">Nessuna skill appresa finora.</string>
     <string name="skill_delete">Elimina</string>
+    <string name="skill_needs_recompile">da ricompilare</string>
 
     <!-- Skill replay -->
     <string name="replay_supervised">Uso la skill \"%1$s\"?</string>
     <string name="replay_done">Skill eseguita.</string>
     <string name="replay_aborted">Replay interrotto, riprovo col modello…</string>
+    <string name="replay_fallback">Adatto la skill…</string>
 
     <!-- Biometric -->
     <string name="biometric_title">Sblocca Android Agent</string>

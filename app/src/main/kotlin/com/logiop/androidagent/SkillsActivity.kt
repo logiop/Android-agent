@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.logiop.androidagent.memory.Skill
+import com.logiop.androidagent.memory.SkillStats
 import com.logiop.androidagent.memory.SkillStore
 import com.logiop.androidagent.ui.theme.AndroidAgentTheme
 import kotlinx.coroutines.Dispatchers
@@ -93,9 +94,14 @@ class SkillsActivity : ComponentActivity() {
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(skill.intentPattern, style = MaterialTheme.typography.bodyLarge)
+                                val recompile = if (SkillStats.needsRecompile(skill.successCount, skill.failCount)) {
+                                    " · " + stringResource(R.string.skill_needs_recompile)
+                                } else {
+                                    ""
+                                }
                                 Text(
                                     text = "${skill.targetApp} · ${skill.trustState.name.lowercase()} · " +
-                                        "ok ${skill.successCount} / ko ${skill.failCount}",
+                                        "ok ${skill.successCount} / ko ${skill.failCount}$recompile",
                                     style = MaterialTheme.typography.bodySmall,
                                 )
                             }

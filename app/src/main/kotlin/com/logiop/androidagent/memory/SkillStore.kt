@@ -167,6 +167,16 @@ class SkillStore(context: Context) {
         }
     }
 
+    /** Records a lightweight episodic entry (queryable, complements the audit log). */
+    fun recordEpisode(command: String, outcome: String) {
+        val values = ContentValues().apply {
+            put("ts", timestamp.format(Date()))
+            put("command", command)
+            put("outcome", outcome)
+        }
+        db.writableDatabase.insert("episode", null, values)
+    }
+
     private fun parseSkill(c: android.database.Cursor): Skill = Skill(
         id = c.getLong(0),
         intentPattern = c.getString(1),

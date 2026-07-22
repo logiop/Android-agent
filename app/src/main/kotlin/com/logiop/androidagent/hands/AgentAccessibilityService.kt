@@ -129,6 +129,38 @@ class AgentAccessibilityService : AccessibilityService() {
         return if (bestScore >= LocatorMatcher.THRESHOLD) best else null
     }
 
+    /**
+     * Taps a neutral "dismiss" button of an unexpected transient dialog (OK,
+     * Chiudi, Continua, Salta…). Deliberately excludes permission-granting
+     * buttons (Consenti/Allow/Accetta) and cancel buttons, so replay never
+     * silently grants a permission or cancels the user's intent. Returns true
+     * if a dialog was dismissed.
+     */
+    fun dismissTransientDialog(): Boolean {
+        val root = rootInActiveWindow ?: return false
+        val queue = ArrayDeque<AccessibilityNodeInfo>()
+        queue.add(root)
+        while (queue.isNotEmpty()) {
+            val node = queue.removeFirst()
+            val label = (node.text ?: node.contentDescription ?: "").toString().trim()
+            if (label.isNotEmpty() && isDismissLabel(label)) {
+                val target = clickableAncestor(node)
+                if (target != null && target.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+                    return true
+                }
+            }
+            for (i in 0 until node.childCount) {
+                node.getChild(i)?.let { queue.add(it) }
+            }
+        }
+        return false
+    }
+
+    private fun isDismissLabel(label: String): Boolean =
+        DISMISS_KEYWORDS.any { kw ->
+            Regex("""\b${Regex.escape(kw)}\b""", RegexOption.IGNORE_CASE).containsMatchIn(label)
+        }
+
     /** Replays a control action on the element matching [target]. */
     fun actOnLocator(target: ElementLocator, action: String, argument: String): Boolean {
         val node = findByLocator(target) ?: return false
@@ -201,6 +233,12 @@ class AgentAccessibilityService : AccessibilityService() {
         @Volatile
         var instance: AgentAccessibilityService? = null
             private set
+
+        /** Neutral dismiss labels only — no permission grants, no cancels. */
+        private val DISMISS_KEYWORDS = listOf(
+            "ok", "chiudi", "close", "continua", "continue", "salta", "skip",
+            "capito", "got it", "va bene", "fine", "done",
+        )
 
         /** Whether the user has enabled this service in Accessibility settings. */
         fun isEnabled(context: Context): Boolean {
