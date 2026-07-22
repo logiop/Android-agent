@@ -9,6 +9,7 @@ import android.provider.Settings
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import com.logiop.androidagent.memory.ElementLocator
+import com.logiop.androidagent.memory.LocatorMatcher
 import com.logiop.androidagent.memory.UiStateDescriptor
 
 /**
@@ -105,6 +106,52 @@ class AgentAccessibilityService : AccessibilityService() {
             AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD
         }
         return if (scrollable.performAction(action)) locatorOf(scrollable) else null
+    }
+
+    /** Finds the on-screen node that best matches [target] above the score threshold. */
+    fun findByLocator(target: ElementLocator): AccessibilityNodeInfo? {
+        val root = rootInActiveWindow ?: return null
+        var best: AccessibilityNodeInfo? = null
+        var bestScore = 0.0
+        val queue = ArrayDeque<AccessibilityNodeInfo>()
+        queue.add(root)
+        while (queue.isNotEmpty()) {
+            val node = queue.removeFirst()
+            val s = LocatorMatcher.score(target, locatorOf(node))
+            if (s > bestScore) {
+                bestScore = s
+                best = node
+            }
+            for (i in 0 until node.childCount) {
+                node.getChild(i)?.let { queue.add(it) }
+            }
+        }
+        return if (bestScore >= LocatorMatcher.THRESHOLD) best else null
+    }
+
+    /** Replays a control action on the element matching [target]. */
+    fun actOnLocator(target: ElementLocator, action: String, argument: String): Boolean {
+        val node = findByLocator(target) ?: return false
+        return when (action) {
+            "tap" -> clickableAncestor(node)?.performAction(AccessibilityNodeInfo.ACTION_CLICK) ?: false
+            "type" -> {
+                val args = Bundle().apply {
+                    putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, argument)
+                }
+                node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
+            }
+            "scroll" -> {
+                val forward = argument != "up" && argument != "backward"
+                node.performAction(
+                    if (forward) {
+                        AccessibilityNodeInfo.ACTION_SCROLL_FORWARD
+                    } else {
+                        AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD
+                    },
+                )
+            }
+            else -> false
+        }
     }
 
     private fun locatorOf(node: AccessibilityNodeInfo): ElementLocator {

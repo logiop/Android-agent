@@ -51,4 +51,22 @@ class SkillCompilerTest {
         assertEquals(2, draft.steps.size)
         assertEquals("com.android.chrome", draft.targetApp)
     }
+
+    @Test
+    fun autoDraft_bindsTypedStepToSlot() {
+        val trajectory = Trajectory(
+            command = "cerca meteo genova",
+            targetApp = "com.android.chrome",
+            steps = listOf(
+                TrajectoryStep("type", "meteo genova", ElementLocator(resourceId = "search"), "s1", false),
+                TrajectoryStep("tap", "Cerca", ElementLocator(text = "Cerca"), "s2", false),
+            ),
+        )
+        val steps = SkillCompiler.autoDraft(trajectory).steps
+        // The typed step is bound to the slot; the tap keeps a literal argument.
+        assertEquals("slot1", steps[0].slotName)
+        assertEquals("meteo genova", steps[0].argument)
+        assertEquals("", steps[1].slotName)
+        assertEquals("Cerca", steps[1].argument)
+    }
 }

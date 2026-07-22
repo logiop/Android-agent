@@ -30,6 +30,7 @@ import androidx.core.content.ContextCompat
 import com.logiop.androidagent.MainActivity
 import com.logiop.androidagent.R
 import com.logiop.androidagent.agent.AgentLoop
+import com.logiop.androidagent.agent.SkillReplayer
 import com.logiop.androidagent.agent.Whitelist
 import com.logiop.androidagent.brain.Brain
 import com.logiop.androidagent.hands.AgentAccessibilityService
@@ -37,8 +38,12 @@ import com.logiop.androidagent.hands.AppLauncher
 import com.logiop.androidagent.SkillReviewActivity
 import com.logiop.androidagent.hands.Command
 import com.logiop.androidagent.hands.CommandInterpreter
+import com.logiop.androidagent.memory.Skill
+import com.logiop.androidagent.memory.SkillMatcher
 import com.logiop.androidagent.memory.SkillStore
+import com.logiop.androidagent.memory.SkillWithSteps
 import com.logiop.androidagent.memory.Trajectory
+import com.logiop.androidagent.memory.TrustState
 import com.logiop.androidagent.security.AuditLog
 import com.logiop.androidagent.voice.VoiceRecognizer
 import kotlin.math.abs
@@ -88,6 +93,7 @@ class OverlayService : Service() {
     private lateinit var auditLog: AuditLog
     private lateinit var skillStore: SkillStore
     private lateinit var agentLoop: AgentLoop
+    private lateinit var replayer: SkillReplayer
     private val mainHandler = Handler(Looper.getMainLooper())
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -99,6 +105,7 @@ class OverlayService : Service() {
         auditLog = AuditLog(this)
         skillStore = SkillStore(this)
         agentLoop = AgentLoop(this, brain, Whitelist(this), auditLog, agentHost)
+        replayer = SkillReplayer(this, skillStore, auditLog, replayHost)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -120,6 +127,7 @@ class OverlayService : Service() {
         isRunning = false
         mainHandler.removeCallbacksAndMessages(null)
         agentLoop.stop()
+        replayer.stop()
         dismissConfirmation()
         voice.destroy()
         brain.close()
@@ -254,7 +262,7 @@ class OverlayService : Service() {
                 ).show()
             }
 
-            is Command.Freeform -> handleFreeform(command.text)
+            is Command.Freeform -> handleFreeformOrSkill(command.text)
         }
     }
 
@@ -263,6 +271,72 @@ class OverlayService : Service() {
      * executes safe navigation directly, and runs control actions only inside
      * whitelisted apps, asking for confirmation before irreversible ones.
      */
+    /**
+     * A free-form command: if a learned skill matches, replay it (no LLM);
+     * otherwise fall back to the LLM loop. Deterministic shortcuts are already
+     * handled before this point.
+     */
+    private fun handleFreeformOrSkill(text: String) {
+        val match = findMatchingSkill(text)
+        if (match != null) {
+            startReplay(match.first, text, match.second)
+        } else {
+            handleFreeform(text)
+        }
+    }
+
+    private fun findMatchingSkill(text: String): Pair<SkillWithSteps, Map<String, String>>? {
+        var best: Skill? = null
+        var bestSlots: Map<String, String>? = null
+        var bestRank = -1
+        for (skill in skillStore.listSkills()) {
+            val slots = SkillMatcher.match(text, skill.intentPattern) ?: continue
+            val rank = (if (skill.trustState == TrustState.TRUSTED) 1000 else 0) + skill.successCount
+            if (rank > bestRank) {
+                bestRank = rank
+                best = skill
+                bestSlots = slots
+            }
+        }
+        val chosen = best ?: return null
+        val full = skillStore.loadWithSteps(chosen.id) ?: return null
+        return full to (bestSlots ?: emptyMap())
+    }
+
+    private fun startReplay(skill: SkillWithSteps, command: String, slots: Map<String, String>) {
+        if (skill.skill.trustState == TrustState.QUARANTINE) {
+            // Supervised mode until the skill is promoted: confirm before running.
+            showConfirmation(getString(R.string.replay_supervised, skill.skill.intentPattern)) { ok ->
+                if (ok) {
+                    replayer.replay(skill, command, slots)
+                } else {
+                    toastLong(getString(R.string.agent_cancelled))
+                }
+            }
+        } else {
+            replayer.replay(skill, command, slots)
+        }
+    }
+
+    private val replayHost = object : SkillReplayer.Host {
+        override fun onInfo(message: String) {
+            toastLong(message)
+        }
+
+        override fun onFinished(message: String) {
+            setBubbleState(BubbleState.IDLE)
+            toastLong(message)
+        }
+
+        override fun requestConfirmation(description: String, onResult: (Boolean) -> Unit) {
+            showConfirmation(description, onResult)
+        }
+
+        override fun onFallback(command: String) {
+            agentLoop.start(command)
+        }
+    }
+
     private fun handleFreeform(text: String) {
         val service = AgentAccessibilityService.instance
         if (service == null) {

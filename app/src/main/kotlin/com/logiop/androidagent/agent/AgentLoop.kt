@@ -8,6 +8,7 @@ import com.logiop.androidagent.brain.AgentAction
 import com.logiop.androidagent.brain.Brain
 import com.logiop.androidagent.hands.AgentAccessibilityService
 import com.logiop.androidagent.hands.AppLauncher
+import com.logiop.androidagent.memory.ElementLocator
 import com.logiop.androidagent.memory.Trajectory
 import com.logiop.androidagent.memory.TrajectoryStep
 import com.logiop.androidagent.security.AuditLog
@@ -124,6 +125,7 @@ class AgentLoop(
             "open_app" -> {
                 auditLog.record("open_app \"${action.target}\"")
                 AppLauncher.openApp(context, action.target)
+                recordNavStep("open_app", action.target)
                 host.onInfo(describe(action))
                 continueAfterAction()
                 return
@@ -132,6 +134,7 @@ class AgentLoop(
                 val query = action.text.ifBlank { action.target }
                 auditLog.record("search \"$query\"")
                 AppLauncher.googleSearch(context, query)
+                recordNavStep("search", query)
                 host.onInfo(describe(action))
                 continueAfterAction()
                 return
@@ -162,6 +165,18 @@ class AgentLoop(
             performControl(action)
             continueAfterAction()
         }
+    }
+
+    /** Records a navigation step (open_app/search) into the trajectory for replay. */
+    private fun recordNavStep(actionType: String, argument: String) {
+        val service = AgentAccessibilityService.instance ?: return
+        trajectorySteps += TrajectoryStep(
+            actionType = actionType,
+            argument = argument,
+            locator = ElementLocator(),
+            stateFingerprint = service.captureDescriptor().fingerprint(),
+            irreversible = false,
+        )
     }
 
     private fun performControl(action: AgentAction) {
