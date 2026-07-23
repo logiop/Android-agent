@@ -23,7 +23,9 @@ android {
         applicationId = "com.logiop.androidagent"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
+        // Unique, increasing per CI build so installs always register as an
+        // update (locally falls back to 1).
+        versionCode = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
         versionName = "0.1.0-${gitShortSha()}"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
