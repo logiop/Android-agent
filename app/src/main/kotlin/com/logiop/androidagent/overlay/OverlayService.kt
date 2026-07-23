@@ -21,6 +21,7 @@ import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import android.view.WindowManager
 import android.widget.Button
 import android.widget.TextView
@@ -35,9 +36,12 @@ import com.logiop.androidagent.agent.Whitelist
 import com.logiop.androidagent.brain.Brain
 import com.logiop.androidagent.hands.AgentAccessibilityService
 import com.logiop.androidagent.hands.AppLauncher
+import com.logiop.androidagent.ChatActivity
 import com.logiop.androidagent.SkillReviewActivity
 import com.logiop.androidagent.hands.Command
 import com.logiop.androidagent.hands.CommandInterpreter
+import com.logiop.androidagent.memory.ChatRole
+import com.logiop.androidagent.memory.ChatStore
 import com.logiop.androidagent.memory.Skill
 import com.logiop.androidagent.memory.SkillMatcher
 import com.logiop.androidagent.memory.SkillStore
@@ -61,6 +65,11 @@ class OverlayService : Service() {
     companion object {
         @Volatile
         var isRunning = false
+            private set
+
+        /** The running service, so the chat screen can submit commands to it. */
+        @Volatile
+        var instance: OverlayService? = null
             private set
 
         const val ACTION_STOP = "com.logiop.androidagent.overlay.STOP"
@@ -100,12 +109,19 @@ class OverlayService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        instance = this
+        ChatStore.init(this)
         voice = VoiceRecognizer(this)
         brain = Brain(this)
         auditLog = AuditLog(this)
         skillStore = SkillStore(this)
         agentLoop = AgentLoop(this, brain, Whitelist(this), auditLog, agentHost)
         replayer = SkillReplayer(this, skillStore, auditLog, brain, replayHost)
+    }
+
+    /** Runs a command typed/dictated from the chat through the same pipeline. */
+    fun submitCommand(text: String) {
+        handleCommand(text)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -125,6 +141,7 @@ class OverlayService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         isRunning = false
+        instance = null
         mainHandler.removeCallbacksAndMessages(null)
         agentLoop.stop()
         replayer.stop()
@@ -149,7 +166,7 @@ class OverlayService : Service() {
         )
 
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.drawable.ic_agent)
             .setContentTitle(getString(R.string.notification_title))
             .setContentText(getString(R.string.notification_text))
             .setOngoing(true)
@@ -201,7 +218,9 @@ class OverlayService : Service() {
             y = 240
         }
 
-        view.setOnTouchListener(DragTouchListener(params) { onBubbleTapped() })
+        view.setOnTouchListener(
+            DragTouchListener(params, onTap = { onBubbleTapped() }, onLongPress = { openChat() }),
+        )
 
         windowManager.addView(view, params)
         bubbleView = view
@@ -240,26 +259,25 @@ class OverlayService : Service() {
     }
 
     private fun handleCommand(text: String) {
+        // Single entry point for both voice and chat, so record the command here.
+        ChatStore.append(ChatRole.USER, text)
         when (val command = CommandInterpreter.interpret(text)) {
             is Command.OpenApp -> {
                 val opened = AppLauncher.openApp(this, command.query)
                 auditLog.record("open_app \"${command.query}\" ok=$opened")
-                val message = if (opened) {
-                    getString(R.string.cmd_opening, command.query)
-                } else {
-                    getString(R.string.cmd_app_not_found, command.query)
-                }
-                Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+                reportOutcome(
+                    if (opened) {
+                        getString(R.string.cmd_opening, command.query)
+                    } else {
+                        getString(R.string.cmd_app_not_found, command.query)
+                    },
+                )
             }
 
             is Command.GoogleSearch -> {
                 auditLog.record("search \"${command.query}\"")
                 AppLauncher.googleSearch(this, command.query)
-                Toast.makeText(
-                    this,
-                    getString(R.string.cmd_searching, command.query),
-                    Toast.LENGTH_LONG,
-                ).show()
+                reportOutcome(getString(R.string.cmd_searching, command.query))
             }
 
             is Command.Freeform -> handleFreeformOrSkill(command.text)
@@ -325,7 +343,7 @@ class OverlayService : Service() {
 
         override fun onFinished(message: String) {
             setBubbleState(BubbleState.IDLE)
-            toastLong(message)
+            reportOutcome(message)
         }
 
         override fun requestConfirmation(description: String, onResult: (Boolean) -> Unit) {
@@ -363,7 +381,7 @@ class OverlayService : Service() {
 
         override fun onFinished(message: String) {
             setBubbleState(BubbleState.IDLE)
-            toastLong(message)
+            reportOutcome(message)
         }
 
         override fun requestConfirmation(description: String, onResult: (Boolean) -> Unit) {
@@ -440,10 +458,23 @@ class OverlayService : Service() {
     private fun toastLong(message: String) =
         Toast.makeText(this, message, Toast.LENGTH_LONG).show()
 
+    /** A terminal outcome: toast it and record it in the chat transcript. */
+    private fun reportOutcome(message: String) {
+        toastLong(message)
+        ChatStore.append(ChatRole.AGENT, message)
+    }
+
     private fun signalError(message: String) {
         setBubbleState(BubbleState.ERROR)
         Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+        ChatStore.append(ChatRole.AGENT, message)
         mainHandler.postDelayed({ setBubbleState(BubbleState.IDLE) }, ERROR_RESET_DELAY_MS)
+    }
+
+    private fun openChat() {
+        startActivity(
+            Intent(this, ChatActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+        )
     }
 
     private fun setBubbleState(state: BubbleState) {
@@ -462,16 +493,25 @@ class OverlayService : Service() {
         startActivity(intent)
     }
 
-    /** Moves the bubble while dragging and reports a tap when the finger barely moved. */
+    /**
+     * Moves the bubble while dragging, reports a tap when the finger barely
+     * moved, and a long-press (held still past the timeout) to open the chat.
+     */
     private inner class DragTouchListener(
         private val params: WindowManager.LayoutParams,
         private val onTap: () -> Unit,
+        private val onLongPress: () -> Unit,
     ) : View.OnTouchListener {
         private var initialX = 0
         private var initialY = 0
         private var touchX = 0f
         private var touchY = 0f
         private var dragging = false
+        private var longPressed = false
+        private val longPressRunnable = Runnable {
+            longPressed = true
+            onLongPress()
+        }
 
         override fun onTouch(v: View, event: MotionEvent): Boolean {
             when (event.action) {
@@ -481,6 +521,11 @@ class OverlayService : Service() {
                     touchX = event.rawX
                     touchY = event.rawY
                     dragging = false
+                    longPressed = false
+                    mainHandler.postDelayed(
+                        longPressRunnable,
+                        ViewConfiguration.getLongPressTimeout().toLong(),
+                    )
                 }
 
                 MotionEvent.ACTION_MOVE -> {
@@ -488,6 +533,7 @@ class OverlayService : Service() {
                     val dy = event.rawY - touchY
                     if (abs(dx) > TOUCH_SLOP || abs(dy) > TOUCH_SLOP) {
                         dragging = true
+                        mainHandler.removeCallbacks(longPressRunnable)
                     }
                     params.x = initialX + dx.toInt()
                     params.y = initialY + dy.toInt()
@@ -495,10 +541,15 @@ class OverlayService : Service() {
                 }
 
                 MotionEvent.ACTION_UP -> {
-                    if (!dragging) {
+                    mainHandler.removeCallbacks(longPressRunnable)
+                    if (!dragging && !longPressed) {
                         v.performClick()
                         onTap()
                     }
+                }
+
+                MotionEvent.ACTION_CANCEL -> {
+                    mainHandler.removeCallbacks(longPressRunnable)
                 }
             }
             return true

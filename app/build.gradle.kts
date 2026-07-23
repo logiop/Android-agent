@@ -4,6 +4,17 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
+/** Short git SHA of the current checkout, so each build is identifiable in-app. */
+fun gitShortSha(): String = try {
+    val process = ProcessBuilder("git", "rev-parse", "--short", "HEAD")
+        .directory(rootDir)
+        .redirectErrorStream(true)
+        .start()
+    process.inputStream.bufferedReader().use { it.readText() }.trim().ifEmpty { "dev" }
+} catch (e: Exception) {
+    "dev"
+}
+
 android {
     namespace = "com.logiop.androidagent"
     compileSdk = 34
@@ -12,8 +23,10 @@ android {
         applicationId = "com.logiop.androidagent"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "0.1.0"
+        // Unique, increasing per CI build so installs always register as an
+        // update (locally falls back to 1).
+        versionCode = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
+        versionName = "0.1.0-${gitShortSha()}"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -39,6 +52,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     packaging {

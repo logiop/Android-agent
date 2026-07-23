@@ -5,20 +5,20 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Purple background (shows through the robot's eyes and mouth) -->
-    <path
-        android:fillColor="#6650a4"
-        android:pathData="M0,0h108v108h-108z" />
-
+    <!-- Antenna dot and stem -->
     <path
         android:fillColor="#FFFFFF"
         android:pathData="M50,24 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0 Z" />
     <path
         android:fillColor="#FFFFFF"
         android:pathData="M52.5,27 h3 v9 h-3 Z" />
+
+    <!-- Side ears -->
     <path
         android:fillColor="#FFFFFF"
         android:pathData="M27,50 h5 v10 h-5 Z M76,50 h5 v10 h-5 Z" />
+
+    <!-- Head with eyes and mouth punched out (they show the bubble colour) -->
     <path
         android:fillColor="#FFFFFF"
         android:fillType="evenOdd"

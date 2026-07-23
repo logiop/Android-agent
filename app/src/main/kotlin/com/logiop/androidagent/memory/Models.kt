@@ -88,6 +88,17 @@ data class DraftSkill(
     val steps: List<SkillStep>,
 )
 
+/** Who sent a chat message. */
+enum class ChatRole { USER, AGENT }
+
+/** A single line in the agent chat transcript. */
+data class ChatMessage(
+    val id: Long,
+    val ts: String,
+    val role: ChatRole,
+    val text: String,
+)
+
 /** A run awaiting human confirmation, loaded by the review screen. */
 data class PendingSkill(
     val id: Long,
