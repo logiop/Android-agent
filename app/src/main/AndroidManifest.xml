@@ -55,6 +55,12 @@
             android:exported="false"
             android:label="@string/skill_review_title" />
 
+        <activity
+            android:name=".ChatActivity"
+            android:exported="false"
+            android:label="@string/chat_title"
+            android:windowSoftInputMode="adjustResize" />
+
         <service
             android:name=".overlay.OverlayService"
             android:exported="false"

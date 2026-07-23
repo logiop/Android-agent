@@ -99,6 +99,7 @@ class MainActivity : FragmentActivity() {
                         onManageWhitelist = ::openWhitelist,
                         onShowLog = ::openLog,
                         onShowSkills = ::openSkills,
+                        onOpenChat = ::openChat,
                         onActivate = ::authenticateAndStart,
                         onDeactivate = ::stopOverlay,
                     )
@@ -166,6 +167,10 @@ class MainActivity : FragmentActivity() {
 
     private fun openSkills() {
         startActivity(Intent(this, SkillsActivity::class.java))
+    }
+
+    private fun openChat() {
+        startActivity(Intent(this, ChatActivity::class.java))
     }
 
     private fun importModel(uri: Uri) {
@@ -266,6 +271,7 @@ fun AgentScreen(
     onManageWhitelist: () -> Unit,
     onShowLog: () -> Unit,
     onShowSkills: () -> Unit,
+    onOpenChat: () -> Unit,
     onActivate: () -> Unit,
     onDeactivate: () -> Unit,
     modifier: Modifier = Modifier,
@@ -371,6 +377,13 @@ fun AgentScreen(
             Text(stringResource(R.string.show_skills))
         }
 
+        OutlinedButton(
+            onClick = onOpenChat,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(stringResource(R.string.open_chat))
+        }
+
         Button(
             onClick = onActivate,
             enabled = overlayGranted && !agentRunning,
@@ -411,6 +424,7 @@ fun AgentScreenPreview() {
             onManageWhitelist = {},
             onShowLog = {},
             onShowSkills = {},
+            onOpenChat = {},
             onActivate = {},
             onDeactivate = {},
         )

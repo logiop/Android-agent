@@ -24,6 +24,16 @@
     <string name="manage_whitelist">Gestisci whitelist app</string>
     <string name="show_log">Mostra log azioni</string>
     <string name="show_skills">Skill apprese</string>
+    <string name="open_chat">Chat</string>
+
+    <!-- Chat -->
+    <string name="chat_title">Chat</string>
+    <string name="chat_empty">Scrivi o detta un comando (es. \"apri Chrome\").</string>
+    <string name="chat_hint">Scrivi un comando…</string>
+    <string name="chat_send">Invia</string>
+    <string name="chat_mic">🎤</string>
+    <string name="chat_listening">Ascolto…</string>
+    <string name="chat_agent_inactive">Agente non attivo: attivalo dalla schermata principale per eseguire i comandi.</string>
 
     <!-- Whitelist screen -->
     <string name="whitelist_title">Whitelist app</string>

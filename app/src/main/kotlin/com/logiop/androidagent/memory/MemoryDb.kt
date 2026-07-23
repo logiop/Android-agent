@@ -62,6 +62,7 @@ class MemoryDb(context: Context) : SQLiteOpenHelper(context, NAME, null, VERSION
             )
             """.trimIndent(),
         )
+        db.execSQL(CREATE_CHAT_MESSAGE)
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
@@ -69,10 +70,22 @@ class MemoryDb(context: Context) : SQLiteOpenHelper(context, NAME, null, VERSION
             db.execSQL("ALTER TABLE skill_step ADD COLUMN argument TEXT NOT NULL DEFAULT ''")
             db.execSQL("ALTER TABLE skill_step ADD COLUMN slot_name TEXT NOT NULL DEFAULT ''")
         }
+        if (oldVersion < 3) {
+            db.execSQL(CREATE_CHAT_MESSAGE)
+        }
     }
 
     private companion object {
         const val NAME = "agent_memory.db"
-        const val VERSION = 2
+        const val VERSION = 3
+
+        val CREATE_CHAT_MESSAGE = """
+            CREATE TABLE chat_message (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ts TEXT NOT NULL,
+                role TEXT NOT NULL,
+                text TEXT NOT NULL
+            )
+        """.trimIndent()
     }
 }
