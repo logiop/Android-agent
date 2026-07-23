@@ -36,11 +36,28 @@ jobs:
       - name: Run unit tests and build debug APK
         run: ./gradlew --no-daemon testDebugUnitTest assembleDebug
 
+      # Move the rolling tag to the current commit so the release page shows the
+      # real build, not the commit where the tag was first created.
+      - name: Move debug-latest tag to current commit
+        if: github.event_name == 'push'
+        run: |
+          git tag -f debug-latest "${GITHUB_SHA}"
+          git push -f origin refs/tags/debug-latest
+
       - name: Publish debug APK to GitHub Release
         if: github.event_name == 'push'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: debug-latest
-          name: Debug build (latest)
+          name: Debug build #${{ github.run_number }}
+          body: |
+            Latest debug APK — rolling build.
+
+            - Commit: `${{ github.sha }}`
+            - Branch: `${{ github.ref_name }}`
+            - Build: #${{ github.run_number }}
+
+            Install this over a previous build; the in-app version at the bottom
+            of the home screen (`build 0.1.0-<sha>`) confirms which one is running.
           prerelease: true
           files: app/build/outputs/apk/debug/app-debug.apk
